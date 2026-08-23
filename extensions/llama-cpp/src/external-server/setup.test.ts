@@ -18,8 +18,8 @@ const runtimeApiKeyMock = vi.hoisted(() => vi.fn());
 const removeProviderAuthProfilesWithLockMock = vi.hoisted(() => vi.fn());
 const upsertAuthProfileAfterLoginWithLockOrThrowMock = vi.hoisted(() => vi.fn());
 
-vi.mock("openclaw/plugin-sdk/provider-auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("openclaw/plugin-sdk/provider-auth")>()),
+vi.mock("openclaw/plugin-sdk/provider-auth-api-key", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("openclaw/plugin-sdk/provider-auth-api-key")>()),
   upsertAuthProfileAfterLoginWithLockOrThrow: upsertAuthProfileAfterLoginWithLockOrThrowMock,
 }));
 
