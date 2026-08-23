@@ -61,11 +61,7 @@ export {
   ensureAuthProfileStore,
   ensureAuthProfileStoreForLocalUpdate,
 } from "../agents/auth-profiles/store.js";
-export {
-  listProfilesForProvider,
-  upsertAuthProfile,
-  upsertAuthProfileAfterLoginWithLockOrThrow,
-} from "../agents/auth-profiles/profiles.js";
+export { listProfilesForProvider, upsertAuthProfile } from "../agents/auth-profiles/profiles.js";
 export {
   removeProviderAuthProfilesWithLockCompat as removeProviderAuthProfilesWithLock,
   updateAuthProfileStoreWithLockCompat as updateAuthProfileStoreWithLock,

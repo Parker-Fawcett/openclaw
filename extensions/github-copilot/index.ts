@@ -17,8 +17,8 @@ import {
   listProfilesForProvider,
   normalizeOptionalSecretInput,
   resolveDefaultSecretProviderAlias,
-  upsertAuthProfileAfterLoginWithLockOrThrow,
 } from "openclaw/plugin-sdk/provider-auth";
+import { upsertAuthProfileAfterLoginWithLockOrThrow } from "openclaw/plugin-sdk/provider-auth-api-key";
 import { resolveFirstGithubToken } from "./auth.js";
 import {
   normalizeGithubCopilotDomain,
