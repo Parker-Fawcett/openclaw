@@ -47,30 +47,30 @@ function renderComposer(
   const renderCurrent = () =>
     render(
       renderNewSessionDraftComposer({
-      agentId: "main",
-      attachmentDraft,
-      canSubmit: overrides.canSubmit ?? true,
-      context: undefined,
-      isCatalogTarget: true,
-      message,
-      visibility: overrides.visibility,
-      draftAvailable: overrides.draftAvailable,
-      modelControl: new NewSessionModelControl(() => undefined),
-      requiresModifier: overrides.requiresModifier ?? false,
-      submitDisabledReason: overrides.submitDisabledReason,
-      blockedSubmitNotice: overrides.blockedSubmitNotice,
-      terminalAction: overrides.terminalAction,
-      submitting: overrides.submitting ?? false,
-      textareaController,
-      messageLocked: overrides.messageLocked,
-      requestUpdate: renderCurrent,
-      onInput: (next) => {
-        message = next;
-        overrides.onInput?.(next);
-        renderCurrent();
-      },
-      onVisibilityChange: overrides.onVisibilityChange,
-      onSubmit: overrides.onSubmit ?? (() => undefined),
+        agentId: "main",
+        attachmentDraft,
+        canSubmit: overrides.canSubmit ?? true,
+        context: undefined,
+        isCatalogTarget: true,
+        message,
+        visibility: overrides.visibility,
+        draftAvailable: overrides.draftAvailable,
+        modelControl: new NewSessionModelControl(() => undefined),
+        requiresModifier: overrides.requiresModifier ?? false,
+        requestUpdate: renderCurrent,
+        submitDisabledReason: overrides.submitDisabledReason,
+        blockedSubmitNotice: overrides.blockedSubmitNotice,
+        terminalAction: overrides.terminalAction,
+        submitting: overrides.submitting ?? false,
+        textareaController,
+        messageLocked: overrides.messageLocked,
+        onInput: (next) => {
+          message = next;
+          overrides.onInput?.(next);
+          renderCurrent();
+        },
+        onVisibilityChange: overrides.onVisibilityChange,
+        onSubmit: overrides.onSubmit ?? (() => undefined),
       }),
       container,
     );
@@ -342,6 +342,7 @@ describe("new-session composer sizing lifecycle", () => {
         message: "typed",
         modelControl: new NewSessionModelControl(() => undefined),
         requiresModifier: false,
+        requestUpdate: () => undefined,
         submitting: false,
         textareaController,
         onInput,
@@ -366,6 +367,7 @@ describe("new-session composer sizing lifecycle", () => {
         message: "restored programmatically",
         modelControl: new NewSessionModelControl(() => undefined),
         requiresModifier: false,
+        requestUpdate: () => undefined,
         submitting: false,
         textareaController,
         onInput,

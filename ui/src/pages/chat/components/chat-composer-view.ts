@@ -21,12 +21,12 @@ import {
 import { renderChatAuthorAvatar } from "./chat-author-avatar.ts";
 import type { ChatRunControlsProps } from "./chat-composer-controls.ts";
 import { renderChatPrimaryActions } from "./chat-composer-controls.ts";
-import { focusComposerFromChrome } from "./chat-composer-dom.ts";
+import { focusComposerFromChrome, paneDomId } from "./chat-composer-dom.ts";
 import { renderChatGoal } from "./chat-composer-goal.ts";
 import { renderChatComposerPlusMenu } from "./chat-composer-plus-menu.ts";
 import { renderChatQueue } from "./chat-composer-queue.ts";
-import { renderSkillMenu } from "./chat-composer-skill-menu.ts";
-import { paneDomId, renderSlashMenu } from "./chat-composer-slash-menu.ts";
+import { renderSkillMenu, type SkillMenuHost } from "./chat-composer-skill-menu.ts";
+import { renderSlashMenu } from "./chat-composer-slash-menu.ts";
 import { commitComposerDraft } from "./chat-composer-state.ts";
 import { renderCompactionIndicator, renderFallbackIndicator } from "./chat-composer-status.ts";
 import type { ChatComposerProps, ChatComposerState } from "./chat-composer-types.ts";
@@ -67,6 +67,7 @@ type ChatComposerViewContext = {
   mirrorCameraPreview: boolean;
   slashMenuVisible: boolean;
   skillMenuVisible: boolean;
+  skillMenuHost: SkillMenuHost;
   activeSlashMenuOptionId: string | null;
   activeSlashMenuOptionLabel: string;
   slashMenuListboxId: string;
@@ -102,6 +103,7 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
     mirrorCameraPreview,
     slashMenuVisible,
     skillMenuVisible,
+    skillMenuHost,
     activeSlashMenuOptionId,
     activeSlashMenuOptionLabel,
     slashMenuListboxId,
@@ -308,7 +310,7 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
               ${ref(state.composerInputRef ?? undefined)}
             >
               ${slashMenuVisible ? renderSlashMenu(requestUpdate, props, visibleDraft) : nothing}
-              ${skillMenuVisible ? renderSkillMenu(requestUpdate, props) : nothing}
+              ${skillMenuVisible ? renderSkillMenu(state, skillMenuHost, requestUpdate) : nothing}
               <!-- Everything that stacks above the editor lives in one flow region so
                  attachments, replies and status all inset and wrap the same way
                  instead of each optional block carrying its own placement. The
