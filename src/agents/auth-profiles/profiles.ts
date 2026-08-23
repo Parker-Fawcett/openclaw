@@ -11,6 +11,7 @@ import { normalizeAuthProfileCredential } from "./credential-normalize.js";
 import { dedupeProfileIds, listProfilesForProvider } from "./profile-list.js";
 import {
   ensureAuthProfileStoreForLocalUpdate,
+  loadAuthProfileStoreWithoutExternalProfiles,
   resolvePersistedAuthProfileOwnerAgentDir,
   saveAuthProfileStore,
   updateAuthProfileStoreWithLock,
@@ -125,16 +126,20 @@ export async function promoteAuthProfileInOrder(params: {
   createFromOrder?: string[];
 }): Promise<AuthProfileStore | null> {
   const providerKey = resolveProviderIdForAuth(params.provider);
+  const effectiveProfile = loadAuthProfileStoreWithoutExternalProfiles(params.agentDir).profiles[
+    params.profileId
+  ];
+  if (!effectiveProfile || resolveProviderIdForAuth(effectiveProfile.provider) !== providerKey) {
+    return null;
+  }
+  const preserveOrderProfileIds = dedupeProfileIds([
+    params.profileId,
+    ...(params.createFromOrder ?? []),
+  ]);
   return await updateAuthProfileStoreWithLock({
     agentDir: params.agentDir,
-    ...(params.createFromOrder
-      ? { saveOptions: { preserveOrderProfileIds: params.createFromOrder } }
-      : {}),
+    saveOptions: { preserveOrderProfileIds },
     updater: (store) => {
-      const profile = store.profiles[params.profileId];
-      if (!profile || resolveProviderIdForAuth(profile.provider) !== providerKey) {
-        return false;
-      }
       const matchingOrderEntries = listProviderAuthStateEntries(store.order, providerKey);
       const existing = readProviderAuthState(store.order, providerKey);
       if (!existing || existing.length === 0) {

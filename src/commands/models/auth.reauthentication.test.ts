@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AUTH_STORE_VERSION } from "../../agents/auth-profiles/constants.js";
+import { loadPersistedAuthProfileStore } from "../../agents/auth-profiles/persisted.js";
 import { clearRuntimeAuthProfileStoreSnapshots } from "../../agents/auth-profiles/runtime-snapshots.js";
 import {
   loadAuthProfileStoreWithoutExternalProfiles,
@@ -156,6 +157,100 @@ describe("models auth reauthentication", () => {
       });
       expect(isProfileInCooldown(persisted, PROFILE_ID, now)).toBe(false);
     });
+  });
+
+  it("promotes a reauthenticated inherited profile without copying its credential", async () => {
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-model-auth-inherited-"));
+    const mainAgentDir = path.join(stateDir, "agents", "main", "agent");
+    const secondaryAgentDir = path.join(stateDir, "agents", "secondary", "agent");
+    const priorProfileId = "fixture:prior";
+    const now = Date.now();
+    try {
+      await withEnvAsync({ OPENCLAW_STATE_DIR: stateDir }, async () => {
+        try {
+          fs.mkdirSync(mainAgentDir, { recursive: true });
+          fs.mkdirSync(secondaryAgentDir, { recursive: true });
+          saveAuthProfileStore(
+            {
+              ...createStaleStore(now),
+              profiles: {
+                ...createStaleStore(now).profiles,
+                [priorProfileId]: {
+                  type: "oauth",
+                  provider: "fixture",
+                  access: "prior-access",
+                  refresh: "prior-refresh",
+                  expires: now + 60_000,
+                },
+              },
+              order: { fixture: [priorProfileId, PROFILE_ID] },
+            },
+            mainAgentDir,
+            { filterExternalAuthProfiles: false },
+          );
+          saveAuthProfileStore(
+            {
+              version: AUTH_STORE_VERSION,
+              profiles: {},
+              order: { fixture: [priorProfileId, PROFILE_ID] },
+            },
+            secondaryAgentDir,
+            {
+              filterExternalAuthProfiles: false,
+              preserveOrderProfileIds: [priorProfileId, PROFILE_ID],
+            },
+          );
+          mocks.resolvePluginProvidersCore.mockReturnValue([
+            createProvider(async () => ({
+              profiles: [
+                {
+                  profileId: PROFILE_ID,
+                  credential: {
+                    type: "oauth",
+                    provider: "fixture",
+                    access: "fresh-access",
+                    refresh: "fresh-refresh",
+                    expires: now + 120_000,
+                  },
+                },
+              ],
+            })),
+          ]);
+
+          await runModelsAuthLoginFlowCore({
+            provider: "fixture",
+            agent: "secondary",
+            config: {
+              agents: {
+                ownership: "explicit",
+                entries: { main: {}, secondary: {} },
+              },
+            },
+            runtime: createRuntime(),
+            prompter: createPrompter(),
+          });
+
+          expect(loadPersistedAuthProfileStore(mainAgentDir)).toMatchObject({
+            profiles: {
+              [PROFILE_ID]: { access: "fresh-access", refresh: "fresh-refresh" },
+            },
+            usageStats: {
+              [PROFILE_ID]: { credentialGeneration: 1, errorCount: 0 },
+            },
+          });
+          expect(loadPersistedAuthProfileStore(secondaryAgentDir)).toEqual({
+            version: AUTH_STORE_VERSION,
+            profiles: {},
+            order: { fixture: [PROFILE_ID, priorProfileId] },
+          });
+        } finally {
+          closeOpenClawAgentDatabasesForTest();
+          closeOpenClawStateDatabaseForTest();
+        }
+      });
+    } finally {
+      fs.rmSync(stateDir, { recursive: true, force: true });
+    }
   });
 
   it("preserves the existing profile state when login fails", async () => {

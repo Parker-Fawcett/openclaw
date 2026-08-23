@@ -2041,6 +2041,24 @@ describe("setAuthProfileOrder", () => {
         const persistedCustom = loadPersistedAuthProfileStore(customAgentDir);
         expect(persistedCustom?.profiles["openai:profile-b"]).toBeUndefined();
         expect(persistedCustom?.profiles["openai:profile-a"]).toBeUndefined();
+
+        await setAuthProfileOrder({
+          agentDir: customAgentDir,
+          provider: "openai",
+          order: ["openai:profile-a", "openai:profile-b"],
+        });
+        const promoted = await promoteAuthProfileInOrder({
+          agentDir: customAgentDir,
+          provider: "openai",
+          profileId: "openai:profile-b",
+        });
+
+        expect(promoted?.order?.openai).toEqual(["openai:profile-b", "openai:profile-a"]);
+        expect(loadPersistedAuthProfileStore(customAgentDir)?.order?.openai).toEqual([
+          "openai:profile-b",
+          "openai:profile-a",
+        ]);
+        expect(loadPersistedAuthProfileStore(customAgentDir)?.profiles).toEqual({});
       },
       { clearOAuthDir: true },
     );
