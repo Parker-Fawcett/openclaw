@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveOAuthDir } from "../../config/paths.js";
+import { writeConfigMachineState } from "../../state/config-machine-state.js";
 import {
   closeOpenClawAgentDatabasesForTest,
   openOpenClawAgentDatabase,
@@ -16,7 +17,7 @@ import { closeOpenClawStateDatabaseForTest } from "../../state/openclaw-state-db
 import { withEnvAsync } from "../../test-utils/env.js";
 import { AUTH_STORE_VERSION } from "./constants.js";
 import { testing as externalAuthTesting } from "./external-auth.test-support.js";
-import { loadPersistedAuthProfileStore } from "./persisted.js";
+import { loadPersistedAuthProfileStore, loadPersistedSharedAuthProfileStore } from "./persisted.js";
 import {
   clearLastGoodProfileWithLock,
   markAuthProfileSuccess,
@@ -1212,6 +1213,80 @@ describe("promoteAuthProfileInOrder", () => {
         expect(
           loadPersistedAuthProfileStore(secondaryAgentDir)?.profiles[profileId],
         ).toBeUndefined();
+      },
+      { clearOAuthDir: true },
+    );
+  });
+
+  it("uses the explicit state root's shared database when replacing an inherited profile", async () => {
+    await withAuthProfileTestState(
+      "openclaw-auth-profile-explicit-state-db-",
+      async ({ stateDir }) => {
+        const explicitStateDir = path.join(stateDir, "explicit");
+        const secondaryAgentDir = path.join(explicitStateDir, "agents", "secondary", "agent");
+        fs.mkdirSync(secondaryAgentDir, { recursive: true });
+        const explicitEnv = {
+          ...process.env,
+          OPENCLAW_AGENT_DIR: undefined,
+          OPENCLAW_STATE_DIR: explicitStateDir,
+        };
+        writeConfigMachineState("auth.sharedStore", { location: "state-db" }, { env: explicitEnv });
+        const profileId = "openai:shared";
+        const now = Date.now();
+        await withEnvAsync(explicitEnv, async () => {
+          saveAuthProfileStore(
+            {
+              version: AUTH_STORE_VERSION,
+              profiles: {
+                [profileId]: {
+                  type: "oauth",
+                  provider: "openai",
+                  access: "inherited-access",
+                  refresh: "inherited-refresh",
+                  expires: now + 120_000,
+                },
+              },
+              usageStats: {
+                [profileId]: {
+                  errorCount: 4,
+                  disabledUntil: now + 60_000,
+                  disabledReason: "auth_permanent",
+                },
+              },
+            },
+            undefined,
+            { sharedStoreWrite: true },
+          );
+        });
+
+        await upsertAuthProfileAfterLoginWithLockOrThrow({
+          profileId,
+          credential: {
+            type: "oauth",
+            provider: "openai",
+            access: "reauthenticated-access",
+            refresh: "reauthenticated-refresh",
+            expires: now + 180_000,
+          },
+          agentDir: secondaryAgentDir,
+          stateDir: explicitStateDir,
+        });
+
+        expect(loadPersistedSharedAuthProfileStore(explicitEnv)).toMatchObject({
+          profiles: {
+            [profileId]: {
+              access: "reauthenticated-access",
+              refresh: "reauthenticated-refresh",
+            },
+          },
+          usageStats: {
+            [profileId]: {
+              credentialGeneration: 1,
+              errorCount: 0,
+            },
+          },
+        });
+        expect(loadPersistedAuthProfileStore(secondaryAgentDir)).toBeNull();
       },
       { clearOAuthDir: true },
     );
