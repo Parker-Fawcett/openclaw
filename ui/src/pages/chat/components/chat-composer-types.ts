@@ -72,6 +72,7 @@ export type ChatComposerProps = ChatAttachmentControlsProps & {
   queuedOutboxCount?: number;
   canSend: boolean;
   disabledReason: string | null;
+  disabledReasonTone?: "info" | "danger";
   disabledBanner?: ChatComposerDisabledBanner;
   runError?: { summary: string } | null;
   sending: boolean;

@@ -397,7 +397,10 @@ function showPastedTextInComposer(att: ChatAttachment, props: ChatAttachmentCont
 }
 
 function handleChatAttachmentFileSelect(e: Event, props: ChatAttachmentControlsProps) {
-  const input = e.target as HTMLInputElement;
+  const input = e.target;
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
   const files = [...(input.files ?? [])];
   input.value = "";
   void appendAttachmentFiles(files, props);
@@ -501,7 +504,10 @@ export function handleChatAttachmentMenuSelection(
   if (value !== "camera" && value !== "photo" && value !== "file") {
     return false;
   }
-  clickComposerInput(event.currentTarget as HTMLElement, `.agent-chat__${value}-input`);
+  const target = event.currentTarget;
+  if (target instanceof HTMLElement) {
+    clickComposerInput(target, `.agent-chat__${value}-input`);
+  }
   return true;
 }
 
@@ -772,7 +778,11 @@ export function renderAttachmentPreview(props: ChatAttachmentControlsProps) {
     <div
       class="chat-attachments-preview"
       ${ref(syncAttachmentRailScroll)}
-      @scroll=${(event: Event) => syncAttachmentRailScroll(event.currentTarget as Element)}
+      @scroll=${(event: Event) => {
+        if (event.currentTarget instanceof Element) {
+          syncAttachmentRailScroll(event.currentTarget);
+        }
+      }}
     >
       ${attachments.map((att) =>
         att.browserAnnotation

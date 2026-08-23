@@ -386,6 +386,10 @@ export class ChatPane extends ChatPaneBrowserAnnotationRender {
           (!sessionParticipationBlocked || suggestionViewer) &&
           !cloudStartupPending,
       disabledReason: catalogDisabledReason ?? disabledReason,
+      disabledReasonTone:
+        sessionParticipationBlocked && !suggestionViewer && !catalogDisabledReason
+          ? "info"
+          : "danger",
       disabledBanner: this.sessionDisabledBanner({
         catalogDisabledReason,
         modelSetupRequired,

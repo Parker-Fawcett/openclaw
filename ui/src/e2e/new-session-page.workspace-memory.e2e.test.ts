@@ -27,6 +27,7 @@ const DESKTOP_CONTEXT: BrowserContextOptions = {
 };
 const MOBILE_CONTEXT: BrowserContextOptions = {
   ...BASE_CONTEXT,
+  hasTouch: true,
   viewport: { height: 740, width: 364 },
 };
 const MODELS = [
@@ -117,13 +118,14 @@ suite.define(() => {
             contextWindow: 200_000,
           },
         ],
+        allowedSessionVisibilities: ["shared", "draft"],
         hasMultipleSessionSharingIdentities: true,
       });
       await page.goto(`${suite.server.baseUrl}new`);
       const footer = page.locator(".new-session-page__composer .agent-chat__composer-footer");
       const attach = page.getByRole("button", { name: "Add attachment" });
       const takePhoto = page.getByRole("menuitem", { name: "Take photo" });
-      const draft = page.getByRole("switch", { name: "Draft" });
+      const draft = page.locator('.new-session-page__visibility--draft[aria-label="Draft"]');
       const incognito = page.getByRole("switch", { name: "Incognito" });
       const model = page.locator(".new-session-page__composer .chat-composer-model-control");
       await Promise.all([
@@ -254,7 +256,7 @@ suite.define(() => {
       await expect.poll(pickerOpen).toBe(false);
       await expect
         .poll(() => modelSelect.evaluate((element) => element === document.activeElement))
-        .toBe(true);
+        .toBe(false);
       await modelSelect.click();
       await expect.poll(pickerOpen).toBe(true);
       await page.mouse.click(8, 8);

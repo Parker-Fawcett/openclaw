@@ -60,7 +60,7 @@ function renderSteps(card: ProgressCard) {
           ? icons.check
           : step.status === "in_progress"
             ? html`<span class="session-run-spinner"></span>`
-            : icons.circle;
+            : icons.clock;
       return html`<li
         class="session-progress-card__step session-progress-card__step--${step.status}"
         aria-label=${t("sessionProgressCard.stepLabel", { status: statusLabel, step: step.step })}
@@ -114,39 +114,44 @@ export function renderSessionProgressCard(
       ? icons.check
       : currentStep?.status === "in_progress"
         ? html`<span class="session-run-spinner"></span>`
-        : icons.circle;
-    return html`<div
+        : icons.clock;
+    return html`<details
       class="session-progress-card session-progress-card--composer"
       data-progress-card-placement="composer"
-      data-open="false"
+      data-complete=${String(complete)}
+      ?open=${!complete}
     >
-      <div class="session-progress-card__summary" aria-label=${composerCountLabel}>
-        <span class="session-progress-card__summary-indicator" aria-hidden="true">
-          ${summaryIndicator}
+      <summary class="session-progress-card__summary" aria-label=${composerCountLabel}>
+        <span class="session-progress-card__summary-collapsed">
+          <span
+            class="session-progress-card__summary-indicator${complete
+              ? " session-progress-card__summary-indicator--complete"
+              : ""}"
+            aria-hidden="true"
+          >
+            ${summaryIndicator}
+          </span>
+          <span class="session-progress-card__current">${stepLabel}</span>
+          ${counts
+            ? html`<span class="session-progress-card__summary-count"
+                >${currentPosition}/${counts.total}</span
+              >`
+            : nothing}
         </span>
-        <span class="session-progress-card__current">${stepLabel}</span>
-        ${counts
-          ? html`<span class="session-progress-card__summary-count"
-              >${currentPosition}/${counts.total}</span
-            >`
-          : nothing}
-      </div>
-      <div class="session-progress-card__body" role="region" aria-label=${composerCountLabel}>
-        <div class="session-progress-card__heading">
-          <span>${t("sessionProgressCard.composerTitle")}</span>
+        <span class="session-progress-card__summary-expanded">
+          <span class="session-progress-card__summary-title"
+            >${t("sessionProgressCard.composerTitle")}</span
+          >
           <span class="session-progress-card__heading-actions">${shortCount}</span>
-        </div>
-        ${counts
-          ? html`<progress
-              class="session-progress-card__progress"
-              value=${currentPosition}
-              max=${counts.total}
-              aria-label=${composerCountLabel}
-            ></progress>`
-          : nothing}
+        </span>
+        <span class="session-progress-card__summary-chevron" aria-hidden="true"
+          >${icons.chevronDown}</span
+        >
+      </summary>
+      <div class="session-progress-card__body" role="region" aria-label=${composerCountLabel}>
         ${renderMarkdown(card.markdown)} ${renderSteps(card)}
       </div>
-    </div>`;
+    </details>`;
   }
   return html`<section
     class="session-progress-card session-progress-card--${placement}"

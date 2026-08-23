@@ -49,4 +49,44 @@ describe("renderSessionProgressCard", () => {
       },
     ]);
   });
+
+  it("opens active composer progress as a native disclosure without a progress bar", () => {
+    const container = document.createElement("div");
+    render(
+      renderSessionProgressCard(
+        { ...progressCard, markdown: "Working through the task." },
+        "composer",
+      ),
+      container,
+    );
+
+    const card = container.querySelector<HTMLDetailsElement>(
+      '[data-progress-card-placement="composer"]',
+    );
+    expect(card?.open).toBe(true);
+    expect(card?.dataset.complete).toBe("false");
+    expect(card?.querySelector("summary")?.textContent).toContain("Task progress");
+    expect(card?.querySelector("progress")).toBeNull();
+    expect(card?.querySelectorAll(".session-progress-card__step")).toHaveLength(3);
+  });
+
+  it("starts completed composer progress collapsed", () => {
+    const container = document.createElement("div");
+    render(
+      renderSessionProgressCard(
+        {
+          ...progressCard,
+          steps: progressCard.steps?.map((step) => ({ ...step, status: "completed" as const })),
+        },
+        "composer",
+      ),
+      container,
+    );
+
+    const card = container.querySelector<HTMLDetailsElement>(
+      '[data-progress-card-placement="composer"]',
+    );
+    expect(card?.open).toBe(false);
+    expect(card?.dataset.complete).toBe("true");
+  });
 });

@@ -28,12 +28,7 @@ import { renderChatQueue } from "./chat-composer-queue.ts";
 import { renderSkillMenu } from "./chat-composer-skill-menu.ts";
 import { paneDomId, renderSlashMenu } from "./chat-composer-slash-menu.ts";
 import { commitComposerDraft } from "./chat-composer-state.ts";
-import {
-  renderChatRunStatusIndicator,
-  renderCompactionIndicator,
-  renderFallbackIndicator,
-  type ComposerRunStatus,
-} from "./chat-composer-status.ts";
+import { renderCompactionIndicator, renderFallbackIndicator } from "./chat-composer-status.ts";
 import type { ChatComposerProps, ChatComposerState } from "./chat-composer-types.ts";
 import {
   closeChatComposerPickerOnEscape,
@@ -42,7 +37,7 @@ import {
   restorePointerOpenedChatComposerTrigger,
 } from "./chat-picker-overlay.ts";
 import type { createGatewayQuestionPanelProps } from "./chat-question-card.ts";
-import { renderChatVoiceError, renderMicrophoneActivity } from "./chat-voice-activity.ts";
+import { renderChatVoiceError } from "./chat-voice-activity.ts";
 
 type ChatComposerViewContext = {
   props: ChatComposerProps;
@@ -76,7 +71,6 @@ type ChatComposerViewContext = {
   activeSlashMenuOptionLabel: string;
   slashMenuListboxId: string;
   slashMenuAnnouncementId: string;
-  composerRunStatus: ComposerRunStatus | null | undefined;
 };
 
 export function renderChatComposerView(context: ChatComposerViewContext) {
@@ -112,12 +106,13 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
     activeSlashMenuOptionLabel,
     slashMenuListboxId,
     slashMenuAnnouncementId,
-    composerRunStatus,
   } = context;
   const disabledBanner = props.disabledBanner
     ? html`
         <div
-          class="agent-chat__disabled-banner callout ${props.disabledBanner.tone === "neutral"
+          class="agent-chat__disabled-banner ${props.disabledBanner.kind === "composer-replacement"
+            ? "agent-chat__disabled-banner--replacement"
+            : ""} callout ${props.disabledBanner.tone === "neutral"
             ? "agent-chat__disabled-banner--neutral"
             : "info"} callout--action"
           role="status"
@@ -153,9 +148,6 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
                     .busyLabel ?? props.disabledBanner.actionLabel}`
               : props.disabledBanner.actionLabel}
           </button>
-          ${props.disabledBanner.kind === "composer-replacement" && showAbortableUi
-            ? renderChatPrimaryActions(runControlsProps)
-            : nothing}
         </div>
       `
     : nothing;
@@ -178,71 +170,44 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
           : props.onDismissRealtimeTalkError,
       })
     : nothing;
-  const runError = props.runError
-    ? html`
-        <div class="agent-chat__composer-error agent-chat__run-error chat-run-error" role="alert">
-          <span class="agent-chat__composer-error-icon chat-run-error__icon" aria-hidden="true"
-            >${icons.alertTriangle}</span
-          >
-          <span class="agent-chat__composer-error-text chat-run-error__summary"
-            >${props.runError.summary}</span
-          >
-        </div>
-      `
-    : nothing;
-  const interruptedNotice =
-    composerRunStatus?.phase === "interrupted"
-      ? html`
-          <div
-            class="agent-chat__composer-error agent-chat__run-error chat-run-error"
-            role="status"
-          >
-            <span class="agent-chat__composer-error-icon chat-run-error__icon" aria-hidden="true"
-              >${icons.stop}</span
-            >
-            <span class="agent-chat__composer-error-text chat-run-error__summary"
-              >${t("chat.composer.runInterrupted")}</span
-            >
-          </div>
-        `
-      : nothing;
-  const disabledNotice =
-    showComposerInput && props.disabledReason
-      ? html`
-          <div id=${disabledReasonId} class="agent-chat__composer-notice" role="note">
-            <span class="agent-chat__composer-notice-icon" aria-hidden="true"
-              >${icons.shieldQuestion}</span
-            >
-            <span class="agent-chat__composer-error-text">${props.disabledReason}</span>
-          </div>
-        `
-      : nothing;
   const composerAlerts =
-    voiceError !== nothing ||
-    runError !== nothing ||
-    interruptedNotice !== nothing ||
-    disabledNotice !== nothing
-      ? html`<div
-          class="agent-chat__composer-errors ${showComposerInput
-            ? ""
-            : "agent-chat__composer-errors--standalone"}"
-        >
-          ${voiceError}${runError}${interruptedNotice}${disabledNotice}
+    voiceError !== nothing
+      ? html`<div class="agent-chat__composer-errors agent-chat__composer-errors--standalone">
+          ${voiceError}
         </div>`
       : nothing;
-  const offlineHint =
-    showComposerInput && props.offline
-      ? html`<div class="agent-chat__offline-hint" role="status" aria-live="polite">
-          ${props.queuedOutboxCount
-            ? t("chat.composer.offlineQueuedHint", {
-                count: String(props.queuedOutboxCount),
-              })
-            : t("chat.composer.offlineHint")}
-        </div>`
-      : nothing;
+  const offlineText = props.offline
+    ? props.queuedOutboxCount
+      ? t("chat.composer.offlineQueuedHint", { count: String(props.queuedOutboxCount) })
+      : t("chat.composer.offlineHint")
+    : null;
+  const primaryComposerStatus = props.disabledReason
+    ? {
+        text: props.disabledReason,
+        tone: props.disabledReasonTone ?? ("danger" as const),
+        icon:
+          (props.disabledReasonTone ?? "danger") === "danger"
+            ? icons.alertTriangle
+            : icons.shieldQuestion,
+      }
+    : offlineText
+      ? { text: offlineText, tone: "warn" as const, icon: icons.globeOff }
+      : null;
   const composerUnderlaps =
-    showComposerInput && (composerAlerts !== nothing || offlineHint !== nothing)
-      ? html`<div class="agent-chat__composer-underlaps">${composerAlerts}${offlineHint}</div>`
+    showComposerInput && primaryComposerStatus
+      ? html`<div class="agent-chat__composer-underlaps" data-tone=${primaryComposerStatus.tone}>
+          <div
+            id=${props.disabledReason ? disabledReasonId : nothing}
+            class="agent-chat__composer-status-band"
+            role=${primaryComposerStatus.tone === "danger" ? "alert" : "status"}
+            aria-live="polite"
+          >
+            <span class="agent-chat__composer-status-icon" aria-hidden="true"
+              >${primaryComposerStatus.icon}</span
+            >
+            <span class="agent-chat__composer-status-text">${primaryComposerStatus.text}</span>
+          </div>
+        </div>`
       : nothing;
   // Dictation previews at the captured selection. The textarea remains
   // read-only until stop commits the same insertion into the real draft.
@@ -258,6 +223,20 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
   const progressCard = props.progressCard
     ? html`<div class="agent-chat__progress-float">
         ${renderSessionProgressCard(props.progressCard, "composer")}
+      </div>`
+    : nothing;
+  const goal = activeSession?.goal
+    ? html`<div class="agent-chat__goal-float">
+        ${renderChatGoal(state, activeSession.goal, {
+          canAct: props.connected && canCompose,
+          onGoalCommand: props.onGoalCommand,
+          onGoalEdit: (goal) => {
+            commitComposerDraft(props, `/goal edit ${goal.objective}`);
+            requestUpdate();
+            queueMicrotask(() => state.composerTextarea?.focus({ preventScroll: true }));
+          },
+          requestUpdate,
+        })}
       </div>`
     : nothing;
 
@@ -311,7 +290,7 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
             </div>
           `
         : nothing}
-      ${disabledBanner} ${progressCard} ${showComposerInput ? nothing : composerAlerts}
+      ${disabledBanner} ${progressCard} ${goal} ${composerAlerts}
       ${showComposerInput
         ? html`<div
               class="agent-chat__input agent-chat__input--chat ${props.offline
@@ -365,34 +344,8 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
                     `
                   : nothing}
                 <div class="agent-chat__composer-status-stack">
-                  ${dictation?.active
-                    ? html`
-                        <div
-                          class=${`agent-chat__dictation-status${dictation.finalizing ? " agent-chat__dictation-status--finalizing" : ""}`}
-                        >
-                          <span class="agent-chat__dictation-wave">
-                            ${renderMicrophoneActivity({
-                              status: dictation.connecting ? "connecting" : "listening",
-                              inputLevel: dictation.inputLevel,
-                              bars: 48,
-                              mode: "scroll",
-                            })}
-                          </span>
-                        </div>
-                      `
-                    : nothing}
                   ${renderFallbackIndicator(props.fallbackStatus)}
                   ${renderCompactionIndicator(props.compactionStatus)}
-                  ${renderChatGoal(state, activeSession?.goal, {
-                    canAct: props.connected && canCompose,
-                    onGoalCommand: props.onGoalCommand,
-                    onGoalEdit: (goal) => {
-                      commitComposerDraft(props, `/goal edit ${goal.objective}`);
-                      requestUpdate();
-                      queueMicrotask(() => state.composerTextarea?.focus({ preventScroll: true }));
-                    },
-                    requestUpdate,
-                  })}
                 </div>
 
                 ${renderChatAttachmentInputs({ ...props, disabled: !canCompose })}
@@ -567,13 +520,6 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
                   ${composerControls !== nothing
                     ? html`
                         <div class="agent-chat__composer-controls">
-                          ${composerRunStatus?.phase === "interrupted"
-                            ? html`
-                                <div class="agent-chat__composer-run-status">
-                                  ${renderChatRunStatusIndicator(composerRunStatus)}
-                                </div>
-                              `
-                            : nothing}
                           ${overrideCount > 0 && props.capabilityMenu
                             ? html`
                                 <openclaw-tooltip .content=${overrideTooltip}>

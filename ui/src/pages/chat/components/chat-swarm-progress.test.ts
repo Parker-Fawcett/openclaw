@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 describe("chat Swarm progress", () => {
-  it("groups live collector children and maps their dot states", () => {
+  it("groups live collector children and maps their task states", () => {
     const container = renderProgress([
       session({ key: "queued", label: "Queued child", subagentRunState: "active" }),
       session({ key: "running", label: "Running child", status: "running" }),
@@ -52,15 +52,15 @@ describe("chat Swarm progress", () => {
     const group = container.querySelector("[data-swarm-group]");
     expect(group?.getAttribute("data-swarm-group")).toBe("swarm:agent:main:parent:turn-42");
     expect(group?.textContent).toContain("turn-42");
-    expect(group?.textContent?.replace(/\s+/g, " ")).toContain("1 Running · 1 Done · 1 Failed");
-    expect([...container.querySelectorAll(".chat-swarm__dot")].map((dot) => dot.className)).toEqual(
-      [
-        "chat-swarm__dot chat-swarm__dot--queued",
-        "chat-swarm__dot chat-swarm__dot--running",
-        "chat-swarm__dot chat-swarm__dot--done",
-        "chat-swarm__dot chat-swarm__dot--failed",
-      ],
-    );
+    expect(group?.textContent?.replace(/\s+/g, " ")).toContain("2 of 4");
+    expect(
+      [...container.querySelectorAll(".chat-swarm__task-icon")].map((icon) => icon.className),
+    ).toEqual([
+      "chat-swarm__task-icon chat-swarm__task-icon--queued",
+      "chat-swarm__task-icon chat-swarm__task-icon--running",
+      "chat-swarm__task-icon chat-swarm__task-icon--done",
+      "chat-swarm__task-icon chat-swarm__task-icon--failed",
+    ]);
   });
 
   it("renders every child beyond the ordinary 50-row session page", () => {
@@ -70,10 +70,10 @@ describe("chat Swarm progress", () => {
       ),
     );
 
-    expect(container.querySelectorAll(".chat-swarm__dot")).toHaveLength(55);
+    expect(container.querySelectorAll(".chat-swarm__task")).toHaveLength(55);
   });
 
-  it("caps historical dots while keeping active workers visible", () => {
+  it("caps historical tasks while keeping active workers visible", () => {
     const container = renderProgress([
       ...Array.from({ length: 300 }, (_, index) =>
         session({ key: `done-${index}`, status: "done" }),
@@ -81,26 +81,25 @@ describe("chat Swarm progress", () => {
       session({ key: "running", status: "running" }),
     ]);
 
-    expect(container.querySelectorAll(".chat-swarm__dot")).toHaveLength(256);
-    expect(container.querySelector(".chat-swarm__dot--running")).not.toBeNull();
-    expect(container.querySelector(".chat-swarm__more")?.textContent?.trim()).toBe("+45");
-    expect(container.textContent?.replace(/\s+/g, " ")).toContain("1 Running · 300 Done");
+    expect(container.querySelectorAll(".chat-swarm__task")).toHaveLength(256);
+    expect(container.querySelector(".chat-swarm__task-icon--running")).not.toBeNull();
   });
 
-  it("labels dot states and disappears when no group is active", () => {
+  it("exposes a task list and disappears when no group is active", () => {
     const container = renderProgress([session({ label: "Worker A", status: "running" })]);
 
     const widget = container.querySelector("[data-test-id=chat-swarm]");
-    const dot = container.querySelector<HTMLElement>(".chat-swarm__dot--running");
+    const task = container.querySelector<HTMLElement>(".chat-swarm__task");
     expect(widget?.getAttribute("role")).toBe("status");
     expect(widget?.getAttribute("aria-live")).toBe("off");
-    expect(dot?.title).toBe("Worker A: Running");
+    expect(task?.getAttribute("role")).toBe("listitem");
+    expect(task?.textContent).toContain("Worker A");
 
     render(renderChatSwarmProgress({ sessionKey: parentSessionKey, sessions: [] }), container);
     expect(container.querySelector("[data-test-id=chat-swarm]")).toBeNull();
   });
 
-  it("buckets children by phase, labels the default bucket, and shows the latest log", () => {
+  it("keeps tasks from every phase in the compact detail", () => {
     const container = renderProgress([
       session({ key: "unphased", label: "Older child", status: "running" }),
       session({ key: "planning", label: "Planner", status: "done", swarmPhase: "Plan" }),
@@ -114,18 +113,10 @@ describe("chat Swarm progress", () => {
     ]);
 
     expect(
-      [...container.querySelectorAll(".chat-swarm__phase")].map((phase) =>
-        phase.textContent?.trim(),
+      [...container.querySelectorAll(".chat-swarm__task-name")].map((task) =>
+        task.textContent?.trim(),
       ),
-    ).toEqual(["Unphased", "Plan", "Build"]);
-    expect(
-      [...container.querySelectorAll(".chat-swarm__phase-row")].map(
-        (row) => row.querySelectorAll(".chat-swarm__dot").length,
-      ),
-    ).toEqual([1, 1, 1]);
-    expect(container.querySelector(".chat-swarm__narrator")?.textContent).toContain(
-      "Implementing the selected plan.",
-    );
+    ).toEqual(["Older child", "Planner", "Builder"]);
   });
 
   it("orders phase buckets by observation rank, not canonical row order", () => {
@@ -148,9 +139,9 @@ describe("chat Swarm progress", () => {
     ]);
 
     expect(
-      [...container.querySelectorAll(".chat-swarm__phase")].map((phase) =>
-        phase.textContent?.trim(),
+      [...container.querySelectorAll(".chat-swarm__task-name")].map((task) =>
+        task.textContent?.trim(),
       ),
-    ).toEqual(["Plan", "Build", "Unphased"]);
+    ).toEqual(["Planner", "Builder", "Late child"]);
   });
 });

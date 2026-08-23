@@ -13,6 +13,7 @@ type NewSessionDictationOptions = {
   textarea: NewSessionComposerTextareaController;
   getClient: () => GatewayBrowserClient | null;
   isConnected: () => boolean;
+  canCommit: () => boolean;
   onMessage: (message: string) => void;
   onError: (message: string) => void;
   requestUpdate: () => void;
@@ -44,12 +45,18 @@ export class NewSessionDictationControl {
   render() {
     const client = this.options.getClient();
     const connected = this.options.isConnected() && client !== null;
+    const enabled = this.options.canCommit();
     const dictationOptions = {
       client,
       connected,
-      enabled: true,
+      enabled,
       realtimeTalkActive: false,
       onCommit: (transcript: string) => {
+        // Placement can claim the draft while an in-flight dictation request
+        // finishes. Revalidate at commit so the claimed draft stays immutable.
+        if (!this.options.canCommit()) {
+          return;
+        }
         const next = this.options.textarea.insertTranscript(transcript);
         if (next !== null) {
           this.options.onMessage(next);
@@ -67,7 +74,7 @@ export class NewSessionDictationControl {
     return renderComposerVoiceButton({
       connected,
       sending: false,
-      isBusy: false,
+      isBusy: !enabled,
       dictation,
       idleLabel: t("newSession.dictate"),
       microphonePicker: renderMicrophonePicker({

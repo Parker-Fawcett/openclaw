@@ -659,13 +659,8 @@ suite.define(() => {
       await voice.hover();
       await expect
         .poll(() => microphonePickerShell.evaluate((node) => node.getBoundingClientRect().width))
-        .toBe(20);
-      await expect
-        .poll(() => microphonePickerShell.evaluate((node) => getComputedStyle(node).opacity))
-        .toBe("1");
-      await microphonePicker.click();
-      await expect.poll(() => microphonePicker.getAttribute("aria-expanded")).toBe("true");
-      await expect.poll(() => page.locator(".chat-talk-input-picker[open]").count()).toBe(1);
+        .toBe(0);
+      await expect.poll(() => microphonePicker.isVisible()).toBe(false);
     });
   });
 });

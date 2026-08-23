@@ -170,6 +170,26 @@ function resetModelSearch(details: HTMLDetailsElement): void {
   updateModelSearch(input);
 }
 
+export function clearChatModelSearchOnEscape(event: KeyboardEvent): boolean {
+  if (event.key !== "Escape") {
+    return false;
+  }
+  const input = event
+    .composedPath()
+    .find(
+      (target): target is HTMLInputElement =>
+        target instanceof HTMLInputElement && target.matches("[data-chat-model-search]"),
+    );
+  if (!input?.value) {
+    return false;
+  }
+  input.value = "";
+  updateModelSearch(input);
+  event.preventDefault();
+  event.stopPropagation();
+  return true;
+}
+
 function handleModelSearchKeydown(event: KeyboardEvent): void {
   const input = event.currentTarget as HTMLInputElement;
   const menu = pickerMenu(input);
@@ -427,6 +447,9 @@ export function renderChatModelPicker(params: ChatModelPickerParams) {
         <span class="chat-controls__inline-select-label">
           ${params.triggerStatusLabel ?? params.triggerModelLabel}
         </span>
+        <span class="chat-controls__inline-select-chevron" aria-hidden="true"
+          >${icons.chevronUp}</span
+        >
       </summary>
       <wa-popup data-anchored-overlay>
         <div

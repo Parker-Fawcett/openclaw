@@ -320,6 +320,27 @@
       "count": 1,
       "kind": "html-text",
       "name": "text",
+      "path": "ui/src/pages/chat/components/chat-swarm-progress.ts",
+      "text": "of"
+    },
+    {
+      "count": 1,
+      "kind": "html-text",
+      "name": "text",
+      "path": "ui/src/pages/chat/components/chat-workspace-conflict.ts",
+      "text": "Local versions kept; inspect or take the cloud version."
+    },
+    {
+      "count": 1,
+      "kind": "html-text",
+      "name": "text",
+      "path": "ui/src/pages/chat/components/chat-workspace-conflict.ts",
+      "text": "Show commands"
+    },
+    {
+      "count": 1,
+      "kind": "html-text",
+      "name": "text",
       "path": "ui/src/pages/config/mcp.ts",
       "text": "openclaw mcp doctor --probe"
     },

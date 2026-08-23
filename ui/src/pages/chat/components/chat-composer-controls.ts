@@ -206,7 +206,7 @@ export function renderMicrophonePicker(props: MicrophonePickerProps) {
  * on purpose: the new-session composer offers the same control without a run to
  * abort, a send action, or a Talk session to toggle.
  */
-export type ComposerVoiceButtonProps = {
+type ComposerVoiceButtonProps = {
   connected: boolean;
   sending: boolean;
   isBusy: boolean;

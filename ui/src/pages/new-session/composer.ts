@@ -35,6 +35,7 @@ type NewSessionComposerOptions = {
   pendingAttachmentReads: number;
   readSignal: AbortSignal;
   requiresModifier: boolean;
+  requestUpdate?: () => void;
   submitDisabledReason?: string;
   blockedSubmitNotice?: string;
   terminalAction?: {
@@ -119,12 +120,20 @@ function renderStartControl(options: NewSessionComposerOptions) {
 
 export class NewSessionComposerTextareaController {
   private textarea: HTMLTextAreaElement | null = null;
+  private placeholderFrame: number | null = null;
+  private placeholderStartedAt: number | null = null;
+  private placeholderText = "";
+  private placeholderTarget = "";
+  private placeholderEntered = false;
   private capturedSelection: { start: number; end: number } | null = null;
 
   readonly ref = (element?: Element) => {
     const nextTextarea = element instanceof HTMLTextAreaElement ? element : null;
     if (this.textarea && this.textarea !== nextTextarea) {
       disconnectTextareaOverflowObserver(this.textarea);
+    }
+    if (this.textarea && !nextTextarea) {
+      this.resetPlaceholder();
     }
     this.textarea = nextTextarea;
     if (nextTextarea) {
@@ -139,6 +148,60 @@ export class NewSessionComposerTextareaController {
     if (this.textarea?.isConnected && this.textarea.value !== message) {
       scheduleTextareaHeightAdjustment(this.textarea);
     }
+  }
+
+  getPlaceholder(target: string, message: string, requestUpdate: () => void) {
+    if (message.length > 0 || this.placeholderEntered) {
+      this.placeholderEntered = true;
+      if (this.placeholderFrame !== null) {
+        globalThis.cancelAnimationFrame?.(this.placeholderFrame);
+        this.placeholderFrame = null;
+      }
+      return target;
+    }
+    if (this.placeholderTarget !== target) {
+      this.resetPlaceholder();
+      this.placeholderTarget = target;
+    }
+    const requestFrame = globalThis.requestAnimationFrame?.bind(globalThis);
+    if (
+      !requestFrame ||
+      (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)
+    ) {
+      this.placeholderText = target;
+      this.placeholderEntered = true;
+      return target;
+    }
+    if (this.placeholderFrame === null) {
+      const step = (timestamp: number) => {
+        this.placeholderStartedAt ??= timestamp;
+        const elapsed = Math.max(0, timestamp - this.placeholderStartedAt - 220);
+        const length = Math.min(target.length, Math.floor(elapsed / 36));
+        if (length !== this.placeholderText.length) {
+          this.placeholderText = target.slice(0, length);
+          requestUpdate();
+        }
+        if (length < target.length) {
+          this.placeholderFrame = requestFrame(step);
+          return;
+        }
+        this.placeholderFrame = null;
+        this.placeholderEntered = true;
+      };
+      this.placeholderFrame = requestFrame(step);
+    }
+    return this.placeholderText;
+  }
+
+  private resetPlaceholder() {
+    if (this.placeholderFrame !== null) {
+      globalThis.cancelAnimationFrame?.(this.placeholderFrame);
+      this.placeholderFrame = null;
+    }
+    this.placeholderStartedAt = null;
+    this.placeholderText = "";
+    this.placeholderTarget = "";
+    this.placeholderEntered = false;
   }
 
   /**
@@ -188,6 +251,7 @@ export class NewSessionComposerTextareaController {
   }
 
   disconnect() {
+    this.resetPlaceholder();
     if (this.textarea) {
       disconnectTextareaOverflowObserver(this.textarea);
       this.textarea = null;
@@ -212,6 +276,7 @@ function renderVisibilityPill(params: {
         ? "new-session-page__visibility--active"
         : ""}"
       role="switch"
+      aria-label=${params.label}
       aria-checked=${String(active)}
       ?disabled=${disabled}
       title=${params.description}
@@ -270,6 +335,12 @@ function renderNewSessionComposer(options: NewSessionComposerOptions) {
     canCompose: !options.submitting && !options.messageLocked,
   });
   options.textareaController.syncDraft(options.message);
+  const messagePlaceholder = t("newSession.messagePlaceholder");
+  const animatedPlaceholder = options.textareaController.getPlaceholder(
+    messagePlaceholder,
+    options.message,
+    options.requestUpdate ?? (() => undefined),
+  );
   return html`
     <div
       class="agent-chat__composer-shell new-session-page__composer"
@@ -287,7 +358,8 @@ function renderNewSessionComposer(options: NewSessionComposerOptions) {
               class="new-session-page__message"
               rows="1"
               ?disabled=${options.submitting || options.messageLocked}
-              placeholder=${t("newSession.messagePlaceholder")}
+              placeholder=${animatedPlaceholder}
+              aria-label=${messagePlaceholder}
               .value=${options.message}
               @input=${(event: Event) => {
                 const target = event.target as HTMLTextAreaElement;
@@ -355,6 +427,7 @@ export function renderNewSessionDraftComposer(options: {
   textareaController: NewSessionComposerTextareaController;
   voiceControl?: TemplateResult;
   requiresModifier: boolean;
+  requestUpdate?: () => void;
   submitDisabledReason?: string;
   blockedSubmitNotice?: string;
   terminalAction?: {
@@ -390,6 +463,7 @@ export function renderNewSessionDraftComposer(options: {
     pendingAttachmentReads: options.attachmentDraft.pendingReads,
     readSignal,
     requiresModifier: options.requiresModifier,
+    requestUpdate: options.requestUpdate,
     submitDisabledReason: options.submitDisabledReason,
     blockedSubmitNotice: options.blockedSubmitNotice,
     terminalAction: options.terminalAction,

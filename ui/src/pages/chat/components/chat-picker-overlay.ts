@@ -7,14 +7,13 @@ const pointerOpenedDropdowns = new WeakSet<HTMLElement>();
 const POINTER_RESTORED_FOCUS_ATTRIBUTE = "data-chat-pointer-restored-focus";
 const POINTER_OPENED_PICKER_ATTRIBUTE = "data-chat-pointer-opened-picker";
 
-type ComposerDropdown = HTMLElement & { open?: boolean };
-
 let composerPickerDismissalInstalled = false;
 
 function composerPickerIsOpen(picker: HTMLElement): boolean {
-  return picker instanceof HTMLDetailsElement
-    ? picker.open
-    : (picker as ComposerDropdown).open === true || picker.hasAttribute("open");
+  if (picker instanceof HTMLDetailsElement) {
+    return picker.open;
+  }
+  return ("open" in picker && picker.open === true) || picker.hasAttribute("open");
 }
 
 function openChatComposerPickers(root: ParentNode = document): HTMLElement[] {
@@ -31,7 +30,9 @@ function closeComposerPicker(picker: HTMLElement): void {
   if (picker instanceof HTMLDetailsElement) {
     picker.open = false;
   } else {
-    (picker as ComposerDropdown).open = false;
+    if ("open" in picker) {
+      picker.open = false;
+    }
     picker.removeAttribute("open");
   }
 }
@@ -61,7 +62,11 @@ function dismissChatComposerPickersOnEscape(event: KeyboardEvent): void {
   }
   event.preventDefault();
   event.stopPropagation();
-  const trigger = pickerTrigger(pickers.at(-1)!);
+  const lastPicker = pickers.at(-1);
+  if (!lastPicker) {
+    return;
+  }
+  const trigger = pickerTrigger(lastPicker);
   pickers.forEach(closeComposerPicker);
   trigger?.focus({ preventScroll: true });
 }
@@ -88,7 +93,7 @@ function ensureChatComposerPickerDismissal(): void {
   );
 }
 
-export function closeOtherChatComposerPickers(source: HTMLElement): void {
+function closeOtherChatComposerPickers(source: HTMLElement): void {
   const composer = source.closest(".agent-chat__input");
   if (!composer) {
     return;

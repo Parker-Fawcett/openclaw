@@ -59,8 +59,14 @@ export function renderChatComposer(props: ChatComposerProps) {
   const submittedProgress = props.queue.find((item) =>
     isCurrentSessionSubmittedProgress(item, props.sessionKey, props.runStatus),
   );
+  const hasSubmittedProgress = props.queue.some(
+    (item) =>
+      !item.pendingRunId && (item.sendState === "sending" || item.sendState === "waiting-model"),
+  );
+  const sendingForCurrentSession =
+    props.sending && (!hasSubmittedProgress || submittedProgress !== undefined);
   const composerRunStatus =
-    props.sending || showAbortableUi || Boolean(submittedProgress)
+    sendingForCurrentSession || showAbortableUi || Boolean(submittedProgress)
       ? { phase: "in-progress" as const }
       : props.runStatus;
   const compactBusy =
@@ -124,7 +130,7 @@ export function renderChatComposer(props: ChatComposerProps) {
       ? t("chat.composer.preparingModel")
       : props.stream !== null
         ? t("chat.composer.responding", { name: assistantName })
-        : props.sending || submittedProgress
+        : sendingForCurrentSession || submittedProgress
           ? t("chat.composer.sendingMessage")
           : t("chat.composer.working", { name: assistantName });
   // Persistent sr-only live region: run phases are otherwise conveyed only
@@ -531,6 +537,5 @@ export function renderChatComposer(props: ChatComposerProps) {
     activeSlashMenuOptionLabel,
     slashMenuListboxId,
     slashMenuAnnouncementId,
-    composerRunStatus,
   });
 }

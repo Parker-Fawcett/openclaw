@@ -38,6 +38,33 @@ describe("chat transcript rendering", () => {
   beforeEach(installTranscriptDomMocks);
   afterEach(resetTranscriptTestDom);
 
+  it("places interrupted status on the last assistant reply", async () => {
+    const transcript = createTestTranscript();
+    const container = document.body.appendChild(document.createElement("div"));
+    const props = {
+      ...threadProps("pane-interrupted", "agent:main:main", [
+        { role: "user", content: "Start the task", timestamp: 1_000 },
+        { role: "assistant", content: "Partial response", timestamp: 2_000 },
+      ]),
+      runStatus: {
+        phase: "interrupted" as const,
+        runId: "run-1",
+        sessionKey: "agent:main:main",
+        occurredAt: 3_000,
+      },
+    };
+
+    render(renderChatThread(props, transcript), container);
+    transcript.hostConnected();
+    transcript.hostUpdated();
+    await flushDeferredRowPrune();
+
+    const status = requireElement(container, ".chat-turn-terminal-status--interrupted");
+    expect(status.textContent).toContain("Interrupted");
+    expect(requireClosest(status, ".chat-group").classList.contains("assistant")).toBe(true);
+    transcript.hostDisconnected();
+  });
+
   it("reveals touched metadata across stored and live groups within one transcript", async () => {
     const firstTranscript = createTestTranscript();
     const secondTranscript = createTestTranscript();

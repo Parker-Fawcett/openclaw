@@ -164,6 +164,7 @@ class NewSessionPage extends OpenClawLightDomElement {
       textarea: this.submission.composerTextarea,
       getClient: () => this.gateway.client,
       isConnected: () => this.gateway.connected,
+      canCommit: () => !this.submission.submitting && !this.submission.pendingCloud.sessionKey,
       onMessage: (message) => this.setMessageFromUser(message),
       onError: (message) => this.submission.setError(message),
       requestUpdate: () => this.requestUpdate(),
@@ -329,9 +330,6 @@ class NewSessionPage extends OpenClawLightDomElement {
     this.browser.close();
     this.connectMachine.close();
     this.place.adoptAgentDefaults();
-    void this.updateComplete.then(() => {
-      this.querySelector<HTMLTextAreaElement>(".new-session-page__message")?.focus();
-    });
   }
 
   private setMessage(message: string, ownerKey = catalog.routeKey(this.data)) {
@@ -566,6 +564,7 @@ class NewSessionPage extends OpenClawLightDomElement {
                   this.submission.setPermissionMode(permissionMode ?? undefined),
               }),
           requiresModifier: loadSettings().chatSendShortcut === "modifier-enter",
+          requestUpdate: () => this.requestUpdate(),
           submitting: this.submission.submitting,
           textareaController: this.submission.composerTextarea,
           voiceControl: this.dictation.render(),

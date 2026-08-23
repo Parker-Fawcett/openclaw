@@ -778,7 +778,10 @@ describe("chat typing status", () => {
       "typing status",
     );
 
-    expect(indicator.previousElementSibling?.classList.contains("chat-run-error")).toBe(true);
+    expect(indicator.previousElementSibling?.classList.contains("chat-queue")).toBe(true);
+    expect(container.querySelector(".chat-error__content")?.textContent).toContain(
+      "Gateway unavailable",
+    );
     expect(indicator.nextElementSibling?.classList.contains("agent-chat__composer-shell")).toBe(
       true,
     );
@@ -853,9 +856,7 @@ describe("chat Swarm progress", () => {
     expect(scrollAnchor?.classList.contains("chat-scroll-to-bottom-wrap")).toBe(true);
     expect(scrollAnchor?.previousElementSibling?.classList.contains("chat-thread")).toBe(true);
     expect(widget?.nextElementSibling?.classList.contains("agent-chat__composer-shell")).toBe(true);
-    expect(container.querySelector(".chat-swarm__dot--running")?.getAttribute("title")).toBe(
-      "Worker A: Running",
-    );
+    expect(container.querySelector(".chat-swarm__task-name")?.textContent).toBe("Worker A");
   });
 });
 
@@ -902,18 +903,18 @@ describe("inline approval card", () => {
 });
 
 describe("chat run error", () => {
-  it("renders a non-interactive alert immediately above the composer", () => {
+  it("renders a non-interactive alert in the conversation notices", () => {
     const container = renderChatView({
       runError: { summary: "Error: gateway disconnected" },
     });
 
-    const alert = requireElement(container, ".chat-run-error", "chat run error");
-    const summary = requireElement(alert, ".chat-run-error__summary", "chat run error summary");
+    const alert = requireElement(container, ".chat-error", "chat run error");
+    const summary = requireElement(alert, ".chat-error__content", "chat run error summary");
     expect(alert.getAttribute("role")).toBe("alert");
     expect(summary.textContent?.trim()).toBe("Error: gateway disconnected");
-    expect(alert.querySelector(".chat-run-error__icon svg")).not.toBeNull();
-    expect(alert.querySelector("button")).toBeNull();
-    expect(alert.nextElementSibling?.classList.contains("agent-chat__composer-shell")).toBe(true);
+    expect(alert.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')).not.toBeNull();
+    expect(alert.closest(".chat-main__conversation-column")).not.toBeNull();
+    expect(alert.closest(".agent-chat__composer-shell")).toBeNull();
   });
 });
 
@@ -1620,7 +1621,8 @@ describe("chat goal status", () => {
     );
     expect(goal?.querySelector(".agent-chat__goal-elapsed")?.textContent).toBe("15s");
     expect(goal?.getAttribute("aria-label")).toBe("Pursuing goal (12k/50k): Land the web goal UI");
-    expect(goal?.closest(".agent-chat__composer-status-stack")).not.toBeNull();
+    expect(goal?.closest(".agent-chat__goal-float")).not.toBeNull();
+    expect(goal?.closest(".agent-chat__composer-status-stack")).toBeNull();
   });
 
   it("dispatches goal commands from the pill controls", () => {
@@ -1668,7 +1670,9 @@ describe("chat goal status", () => {
     const container = document.createElement("div");
     render(renderChat(props), container);
 
-    expect(container.querySelector(".agent-chat__goal-detail")).toBeNull();
+    expect(container.querySelector(".agent-chat__goal-detail")?.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
     const toggle = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Show goal details"]',
     );
@@ -1677,6 +1681,7 @@ describe("chat goal status", () => {
     render(renderChat(props), container);
 
     const detail = container.querySelector(".agent-chat__goal-detail");
+    expect(detail?.getAttribute("aria-hidden")).toBe("false");
     expect(detail?.querySelector(".agent-chat__goal-detail-objective")?.textContent).toBe(
       "Land the web goal UI",
     );
@@ -2777,10 +2782,11 @@ describe("chat loading skeleton", () => {
     }
   });
 
-  it("shows the interrupted toast in the composer footer", () => {
+  it("keeps interrupted chrome out of the composer", () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(1_000);
     try {
       const container = renderChatView({
+        messages: [{ role: "assistant", content: "Partial response" }],
         composerControls: html`<button class="chat-composer-model-control" type="button">
           Model
         </button>`,
@@ -2792,10 +2798,7 @@ describe("chat loading skeleton", () => {
         },
       });
 
-      const toast = container.querySelector(
-        ".agent-chat__composer-run-status .agent-chat__run-status--interrupted",
-      );
-      expect(toast?.textContent).toContain("Interrupted");
+      expect(container.querySelector(".agent-chat__composer-run-status")).toBeNull();
       expect(
         container.querySelector(".agent-chat__run-status-announcement")?.textContent?.trim(),
       ).toBe("Interrupted");
