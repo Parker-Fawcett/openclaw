@@ -44,6 +44,7 @@ import {
   resolveSidebarLayoutForBoard,
   sidebarRegionCallbacks,
 } from "./chat-pane-sidebar-layout.ts";
+import { createChatPaneSlotCallbacks } from "./chat-pane-slot-callbacks.ts";
 import {
   dismissChatError,
   resolveAssistantAttachmentAuthToken,
@@ -72,13 +73,7 @@ import {
 import { activeQueuedMessageEdit } from "./queued-message-edit.ts";
 import { hasAbortableSessionRun } from "./run-lifecycle.ts";
 import { scheduleChatScroll } from "./scroll.ts";
-import {
-  SIDEBAR_NARROW_BREAKPOINT_PX,
-  closeSlot,
-  isSidebarSlotVisible,
-  openSlot,
-  type SidebarSlotId,
-} from "./sidebar-layout.ts";
+import { SIDEBAR_NARROW_BREAKPOINT_PX, isSidebarSlotVisible } from "./sidebar-layout.ts";
 import { resolveActiveRunOutputTokens, resolveChatProjectionRunId } from "./tool-stream.ts";
 import { configureToolTitleFetcher } from "./tool-titles.ts";
 import { workspaceResultConflictFromPlacement } from "./workspace-conflict.ts";
@@ -128,25 +123,20 @@ export class ChatPane extends ChatPaneBrowserAnnotationRender {
       layout: state.sidebarLayout,
       paneWidth: this.paneWidth,
     });
-    const hasPanelSlot = (slot: SidebarSlotId) =>
-      sidebarLayout.columns[0]?.panels.some((panel) => panel.slot === slot) === true;
+    const {
+      close: closePanelSlot,
+      has: hasPanelSlot,
+      open: openPanelSlot,
+      toggle: togglePanelSlot,
+    } = createChatPaneSlotCallbacks({
+      currentLayout: () => state.sidebarLayout,
+      layout: sidebarLayout,
+      setObserverVisible: this.setSessionObserverVisibility,
+      updateLayout: state.updateSidebarLayout,
+    });
     const progressCardInRail =
       this.paneWidth >= SIDEBAR_NARROW_BREAKPOINT_PX &&
       isSidebarSlotVisible(sidebarLayout, "companion");
-    const openPanelSlot = (slot: SidebarSlotId) => {
-      state.updateSidebarLayout(openSlot(state.sidebarLayout, slot));
-      if (slot === "companion") {
-        this.setSessionObserverVisibility(true);
-      }
-    };
-    const closePanelSlot = (slot: SidebarSlotId) => {
-      if (slot === "companion") {
-        this.setSessionObserverVisibility(false);
-      }
-      state.updateSidebarLayout(closeSlot(state.sidebarLayout, slot));
-    };
-    const togglePanelSlot = (slot: SidebarSlotId) =>
-      hasPanelSlot(slot) ? closePanelSlot(slot) : openPanelSlot(slot);
     state.chatFollowUpMode = resolveControlUiFollowUpMode(
       state.settings.chatFollowUpMode,
       resolveControlUiServerQueueMode(

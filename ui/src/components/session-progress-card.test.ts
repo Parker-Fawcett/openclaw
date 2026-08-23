@@ -76,7 +76,9 @@ describe("renderSessionProgressCard", () => {
       renderSessionProgressCard(
         {
           ...progressCard,
-          steps: progressCard.steps?.map((step) => ({ ...step, status: "completed" as const })),
+          steps: progressCard.steps?.map((step) =>
+            Object.assign({}, step, { status: "completed" as const }),
+          ),
         },
         "composer",
       ),
