@@ -55,7 +55,7 @@ suite.define(() => {
       await page
         .locator(".agent-chat__photo-input")
         .setInputFiles(path.join(process.cwd(), "ui/public/favicon-32.png"));
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "favicon-32.png" }).waitFor();
       await captureUiProof(page, "new-session-draft-before-navigation.png");
 
       await existingSession.click();
@@ -177,7 +177,7 @@ suite.define(() => {
       await message.waitFor();
       await pastePng(message);
 
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "pixel.png" }).waitFor();
       await page.getByRole("button", { name: "Start session" }).click();
 
       const create = await gateway.waitForRequest("sessions.create");
@@ -209,7 +209,7 @@ suite.define(() => {
         .setInputFiles(path.join(process.cwd(), "ui/public/favicon-32.png"));
 
       const attachment = page.locator(".chat-attachment-thumb");
-      const preview = attachment.locator('img[alt="Attachment preview"]');
+      const preview = attachment.getByRole("img", { name: "favicon-32.png" });
       const previewButton = page.getByRole("button", { name: "Open image favicon-32.png" });
       await preview.waitFor({ state: "visible" });
       await expect.poll(() => preview.getAttribute("src")).toMatch(/^data:image\/png;base64,/u);
@@ -508,7 +508,7 @@ suite.define(() => {
         finish();
       });
 
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "pixel.png" }).waitFor();
       await expect.poll(() => submit.isEnabled()).toBe(true);
       await submit.click();
       const create = await gateway.waitForRequest("sessions.create");
@@ -634,12 +634,12 @@ suite.define(() => {
       const composer = page.locator(".new-session-page__message");
 
       await pastePng(composer);
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "pixel.png" }).waitFor();
       await page.getByRole("button", { name: "Remove attachment" }).click();
       await expect.poll(async () => (await proof()).revoked).toBe(1);
 
       await pastePng(composer);
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "pixel.png" }).waitFor();
       const agentDropdown = page.locator(".new-session-page__select--agent wa-dropdown");
       await page.locator(".new-session-page__select--agent .agent-select__trigger").click();
       await expect
@@ -666,7 +666,7 @@ suite.define(() => {
       await navigate("new-session");
       await composer.waitFor();
       await pastePng(composer);
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "pixel.png" }).waitFor();
       await navigate("chat");
       await page.waitForURL((url) => url.pathname.endsWith("/chat"));
       await expect.poll(async () => (await proof()).revoked).toBe(2);
@@ -677,7 +677,7 @@ suite.define(() => {
       await page.getByRole("button", { name: "Remove attachment" }).click();
       await expect.poll(async () => (await proof()).revoked).toBe(3);
       await pastePng(composer);
-      await page.locator('.chat-attachment-thumb img[alt="Attachment preview"]').waitFor();
+      await page.getByRole("img", { name: "pixel.png" }).waitFor();
       await page.getByRole("button", { name: "Start session" }).click();
       await page.waitForURL(
         (url) => url.pathname === controlUiSessionPath("agent:main:preview-cleanup"),
@@ -843,17 +843,13 @@ suite.define(() => {
       await expect
         .poll(() => page.locator(".chat-queue__text").allInnerTexts(), { timeout: 30_000 })
         .toContain(message);
-      await expect
-        .poll(() => page.locator(".chat-queue__error").allInnerTexts(), { timeout: 30_000 })
-        .toContain(runError);
+      await page.locator(".chat-queue__error", { hasText: runError }).waitFor();
 
       await page.reload();
       await expect
         .poll(() => page.locator(".chat-queue__text").allInnerTexts(), { timeout: 30_000 })
         .toContain(message);
-      await expect
-        .poll(() => page.locator(".chat-queue__error").allInnerTexts(), { timeout: 30_000 })
-        .toContain(runError);
+      await page.locator(".chat-queue__error", { hasText: runError }).waitFor();
 
       await page.getByRole("button", { name: "Retry queued message" }).click();
       const retry = await gateway.waitForRequest("chat.send");
@@ -909,9 +905,7 @@ suite.define(() => {
       await expect
         .poll(() => page.locator(".chat-queue__text").allInnerTexts(), { timeout: 30_000 })
         .toContain(message);
-      await expect
-        .poll(() => page.locator(".chat-queue__error").allInnerTexts(), { timeout: 30_000 })
-        .toContain(runError);
+      await page.locator(".chat-queue__error", { hasText: runError }).waitFor();
       await page.getByRole("button", { name: "Retry queued message" }).click();
       const retry = await gateway.waitForRequest("chat.send");
       expect(retry.params).toMatchObject({
