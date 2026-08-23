@@ -2956,63 +2956,74 @@ button.chat-pr__diff {
 
 .agent-chat__composer-underlaps {
   --chat-composer-bottom-underlap: 18px;
+  --chat-composer-underlap-row-height: 44px;
 
   position: relative;
   z-index: 0;
   box-sizing: border-box;
   width: 100%;
   margin: calc(0px - var(--chat-composer-shell-gap) - var(--chat-composer-bottom-underlap)) 0 0;
-  padding-top: calc(var(--chat-composer-shell-gap) + var(--chat-composer-bottom-underlap));
-  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  /* Keep the shell gap outside the row's centering box; only the intentional
+     overlap belongs behind the composer. */
+  padding-top: var(--chat-composer-bottom-underlap);
+  border: 1px solid color-mix(in srgb, var(--border) 16%, transparent);
   border-top: 0;
   border-radius: 0 0 calc(20px * var(--openclaw-corner-radius-scale))
     calc(20px * var(--openclaw-corner-radius-scale));
   corner-shape: superellipse(1.5);
   overflow: hidden;
+  background: var(--composer-attached-surface, var(--chat-composer-surface));
 }
 
-.agent-chat__composer-underlaps:has(.agent-chat__composer-error):not(
-  :has(.agent-chat__offline-hint)
-) {
-  border-color: color-mix(in srgb, var(--danger) 26%, transparent);
+/* This is one status lane; event details remain with their transcript, queue,
+   or toast owner instead of growing extra composer rows. */
+.agent-chat__composer-underlaps[data-tone="info"] {
+  border-color: color-mix(in srgb, var(--info) 12%, transparent);
+  background: color-mix(in srgb, var(--info) 7%, var(--composer-attached-surface));
+  color: color-mix(in srgb, var(--info) 72%, var(--text));
 }
 
-.agent-chat__composer-underlaps:has(.agent-chat__composer-errors) {
-  background: color-mix(in srgb, var(--danger) 8%, var(--chat-composer-surface));
+.agent-chat__composer-underlaps[data-tone="warn"] {
+  border-color: color-mix(in srgb, var(--warn) 12%, transparent);
+  background: color-mix(in srgb, var(--warn) 7%, var(--composer-attached-surface));
+  color: color-mix(in srgb, var(--warn) 72%, var(--text));
 }
 
-.agent-chat__composer-underlaps:has(.agent-chat__composer-notice):not(
-  :has(.agent-chat__composer-error)
-) {
-  background: color-mix(in srgb, var(--info) 9%, var(--chat-composer-surface));
+.agent-chat__composer-underlaps[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--danger) 12%, transparent);
+  background: color-mix(in srgb, var(--danger) 7%, var(--composer-attached-surface));
+  color: color-mix(in srgb, var(--danger) 78%, var(--text));
 }
 
-.agent-chat__composer-underlaps:has(.agent-chat__offline-hint):not(
-  :has(.agent-chat__composer-errors)
-) {
-  border-color: color-mix(in srgb, var(--warn) 26%, transparent);
-  background: color-mix(in srgb, var(--warn) 9%, var(--chat-composer-surface));
-}
-
-:root[data-theme-mode="light"] .agent-chat__composer-underlaps:has(.agent-chat__composer-errors) {
-  background: color-mix(in srgb, var(--danger) 14%, var(--chat-composer-surface));
-}
-
-:root[data-theme-mode="light"]
-  .agent-chat__composer-underlaps:has(.agent-chat__composer-notice):not(
-    :has(.agent-chat__composer-error)
-  ) {
-  background: color-mix(in srgb, var(--info) 14%, var(--chat-composer-surface));
-}
-
-.agent-chat__offline-hint {
+.agent-chat__composer-status-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   box-sizing: border-box;
   width: 100%;
-  padding: 7px 14px;
-  background: color-mix(in srgb, var(--warn) 9%, var(--chat-composer-surface));
-  color: color-mix(in srgb, var(--warn) 72%, var(--text));
-  font-size: 11px;
-  line-height: 1.3;
+  min-height: var(--chat-composer-underlap-row-height);
+  padding: 8px 14px;
+  font-size: var(--control-ui-text-sm);
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.agent-chat__composer-status-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: inherit;
+}
+
+.agent-chat__composer-status-icon svg {
+  width: var(--chat-composer-footer-icon-size, 16px);
+  height: var(--chat-composer-footer-icon-size, 16px);
+}
+
+.agent-chat__composer-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @supports (backdrop-filter: blur(1px)) {
