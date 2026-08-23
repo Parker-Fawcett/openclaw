@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 
 import { render } from "lit";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { GatewaySessionRow } from "../../../api/types.ts";
 import { renderChatSwarmProgress } from "./chat-swarm-progress.ts";
 
@@ -33,6 +33,7 @@ function renderProgress(sessions: readonly GatewaySessionRow[]) {
 
 afterEach(() => {
   document.body.replaceChildren();
+  vi.useRealTimers();
 });
 
 describe("chat Swarm progress", () => {
@@ -143,5 +144,46 @@ describe("chat Swarm progress", () => {
         task.textContent?.trim(),
       ),
     ).toEqual(["Planner", "Builder", "Late child"]);
+  });
+
+  it("uses session runtime fields instead of the last row update", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(100_000);
+    const container = renderProgress([
+      session({
+        key: "running",
+        label: "Running",
+        status: "running",
+        startedAt: 90_000,
+        updatedAt: 99_000,
+      }),
+      session({
+        key: "sampled",
+        label: "Sampled",
+        status: "running",
+        runtimeMs: 4_000,
+        runtimeSampledAt: 98_000,
+        updatedAt: 50_000,
+      }),
+      session({
+        key: "done",
+        label: "Done",
+        status: "done",
+        startedAt: 10_000,
+        endedAt: 17_000,
+        updatedAt: 99_999,
+      }),
+    ]);
+
+    expect(
+      [...container.querySelectorAll(".chat-swarm__task")].map((task) => ({
+        label: task.querySelector(".chat-swarm__task-name")?.textContent,
+        duration: task.querySelector(".chat-swarm__task-duration")?.textContent,
+      })),
+    ).toEqual([
+      { label: "Running", duration: "10s" },
+      { label: "Sampled", duration: "6s" },
+      { label: "Done", duration: "7s" },
+    ]);
   });
 });

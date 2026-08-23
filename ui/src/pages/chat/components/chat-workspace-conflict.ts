@@ -58,29 +58,30 @@ export function renderWorkspaceConflictNotice(props: {
       </summary>
       <div class="chat-workspace-conflict-notice__content">
         <ul class="chat-workspace-conflict-paths">
-          ${visible.paths.map(
-            (entryPath) => html`<li>
+          ${visible.paths.map((entryPath) => {
+            const entryCommands = workspaceConflictGitCommands(conflict, entryPath);
+            return html`<li>
               <code>${workspaceConflictPathForDisplay(entryPath)}</code>
-              ${commands
+              ${entryCommands
                 ? html`<span class="chat-workspace-conflict-path-actions">
                     <button
                       class="btn btn--sm"
                       type="button"
-                      @click=${() => navigator.clipboard.writeText(commands.inspect)}
+                      @click=${() => navigator.clipboard.writeText(entryCommands.inspect)}
                     >
                       ${t("chat.workspaceConflict.inspectCloud")}
                     </button>
                     <button
                       class="btn btn--sm"
                       type="button"
-                      @click=${() => navigator.clipboard.writeText(commands.takeCloud)}
+                      @click=${() => navigator.clipboard.writeText(entryCommands.takeCloud)}
                     >
                       ${t("chat.workspaceConflict.takeCloud")}
                     </button>
                   </span>`
                 : nothing}
-            </li>`,
-          )}
+            </li>`;
+          })}
         </ul>
         ${visible.remaining > 0
           ? html`<div class="chat-workspace-conflict-more">

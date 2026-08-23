@@ -1,5 +1,6 @@
 import type { ProgressCard, ProgressCardStep } from "@openclaw/gateway-protocol";
 import { html, nothing } from "lit";
+import { ref } from "lit/directives/ref.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { t } from "../i18n/index.ts";
 import { icons } from "./icons.ts";
@@ -12,6 +13,25 @@ const STATUS_LABEL_KEYS: Record<ProgressCardStep["status"], Parameters<typeof t>
   in_progress: "sessionProgressCard.status.inProgress",
   pending: "sessionProgressCard.status.pending",
 };
+
+const composerDisclosureOwners = new WeakMap<HTMLDetailsElement, string>();
+
+function initializeComposerDisclosure(
+  element: Element | undefined,
+  sessionKey: string,
+  open: boolean,
+): void {
+  if (
+    !(element instanceof HTMLDetailsElement) ||
+    composerDisclosureOwners.get(element) === sessionKey
+  ) {
+    return;
+  }
+  // The native disclosure owns later toggles; progress rerenders must not
+  // overwrite the operator's open/closed choice.
+  element.open = open;
+  composerDisclosureOwners.set(element, sessionKey);
+}
 
 function progressCounts(card: ProgressCard): { completed: number; total: number } | null {
   const steps = card.steps;
@@ -119,7 +139,7 @@ export function renderSessionProgressCard(
       class="session-progress-card session-progress-card--composer"
       data-progress-card-placement="composer"
       data-complete=${String(complete)}
-      ?open=${!complete}
+      ${ref((element) => initializeComposerDisclosure(element, card.sessionKey, !complete))}
     >
       <summary class="session-progress-card__summary" aria-label=${composerCountLabel}>
         <span class="session-progress-card__summary-collapsed">

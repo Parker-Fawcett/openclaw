@@ -541,6 +541,7 @@ export function renderChat(props: ChatProps) {
                 ${renderChatViewNotices({
                   ...props,
                   error: props.error ?? props.runError?.summary ?? null,
+                  onDismissError: props.error != null ? props.onDismissError : undefined,
                 })}
                 ${renderTranscriptSearch(props.paneId, requestUpdate)}
                 <div class="chat-main__conversation">

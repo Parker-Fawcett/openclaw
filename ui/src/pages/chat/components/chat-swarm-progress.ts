@@ -71,6 +71,22 @@ function isSwarmChildForSession(row: GatewaySessionRow, sessionKey: string): boo
   return Boolean(owner && areUiSessionKeysEquivalent(owner, sessionKey));
 }
 
+function swarmDuration(row: GatewaySessionRow, status: SwarmDotStatus): string {
+  if (status === "queued") {
+    return "—";
+  }
+  let durationMs = row.runtimeMs;
+  if (durationMs != null && status === "running" && row.runtimeSampledAt != null) {
+    durationMs += Math.max(0, Date.now() - row.runtimeSampledAt);
+  } else if (durationMs == null && row.startedAt != null) {
+    const endAt = row.endedAt ?? (status === "running" ? Date.now() : undefined);
+    if (endAt != null) {
+      durationMs = Math.max(0, endAt - row.startedAt);
+    }
+  }
+  return formatDurationCompact(durationMs) ?? "—";
+}
+
 function collectActiveSwarmGroups(
   sessions: readonly GatewaySessionRow[],
   sessionKey: string,
@@ -93,11 +109,7 @@ function collectActiveSwarmGroups(
         key: row.key,
         label: row.label?.trim() || row.displayName?.trim() || row.derivedTitle?.trim() || row.key,
         status,
-        duration:
-          status === "queued"
-            ? "—"
-            : (formatDurationCompact(Math.max(1_000, Date.now() - (row.updatedAt ?? Date.now()))) ??
-              "—"),
+        duration: swarmDuration(row, status),
       },
     });
     byGroup.set(groupId, entries);

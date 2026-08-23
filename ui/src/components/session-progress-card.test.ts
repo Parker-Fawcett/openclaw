@@ -91,4 +91,52 @@ describe("renderSessionProgressCard", () => {
     expect(card?.open).toBe(false);
     expect(card?.dataset.complete).toBe("true");
   });
+
+  it("preserves the operator disclosure choice across progress updates", () => {
+    const container = document.createElement("div");
+    render(renderSessionProgressCard(progressCard, "composer"), container);
+    const card = container.querySelector<HTMLDetailsElement>(
+      '[data-progress-card-placement="composer"]',
+    );
+    expect(card?.open).toBe(true);
+    card!.open = false;
+
+    render(
+      renderSessionProgressCard(
+        {
+          ...progressCard,
+          revision: progressCard.revision + 1,
+          steps: progressCard.steps?.map((step, index) =>
+            index === 1 ? { ...step, step: "Wire the updated checklist" } : step,
+          ),
+        },
+        "composer",
+      ),
+      container,
+    );
+
+    expect(
+      container.querySelector<HTMLDetailsElement>('[data-progress-card-placement="composer"]')
+        ?.open,
+    ).toBe(false);
+  });
+
+  it("uses the default disclosure state for a different session", () => {
+    const container = document.createElement("div");
+    render(renderSessionProgressCard(progressCard, "composer"), container);
+    const first = container.querySelector<HTMLDetailsElement>(
+      '[data-progress-card-placement="composer"]',
+    );
+    first!.open = false;
+
+    render(
+      renderSessionProgressCard({ ...progressCard, sessionKey: "agent:main:next" }, "composer"),
+      container,
+    );
+
+    expect(
+      container.querySelector<HTMLDetailsElement>('[data-progress-card-placement="composer"]')
+        ?.open,
+    ).toBe(true);
+  });
 });

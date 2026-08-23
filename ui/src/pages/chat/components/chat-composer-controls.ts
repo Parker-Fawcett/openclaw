@@ -372,9 +372,13 @@ export function renderChatPrimaryActions(props: ChatRunControlsProps) {
             type="button"
             @pointerdown=${props.onPrimaryActionPointerDown}
             @click=${() => {
-              // Send waits for the final transcript to land in the draft, then
-              // delegates to the normal submission path.
-              void props.dictation?.finishActive().then(() => props.onSend());
+              // Only the dictation session that actually committed text owns
+              // this send; an empty or stale finalization leaves the draft alone.
+              void props.dictation?.finishActive().then((committed) => {
+                if (committed) {
+                  props.onSend();
+                }
+              });
             }}
             ?disabled=${props.dictation.finalizing}
             aria-label=${t("chat.runControls.sendMessage")}

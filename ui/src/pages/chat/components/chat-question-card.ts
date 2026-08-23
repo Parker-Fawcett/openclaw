@@ -524,6 +524,14 @@ class ChatQuestionPanel extends LitElement {
               </div>`
             : nothing}
           <span class="chat-question-panel__progress">${progress}</span>
+          <button
+            class="chat-question-panel__collapse"
+            type="button"
+            @click=${() => this.setCollapsed(true)}
+            aria-label=${t("chat.questions.collapse")}
+          >
+            ${icons.chevronDown}
+          </button>
         </div>
 
         <div class="chat-question-panel__heading">

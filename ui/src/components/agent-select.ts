@@ -110,7 +110,7 @@ export class AgentSelect extends OpenClawLightDomElement {
       event.preventDefault();
       return;
     }
-    const item = event.detail.item as HTMLElement & { checked?: boolean; value?: string };
+    const item = event.detail.item as HTMLElement & { value?: string };
     if (item.hasAttribute("data-create-agent")) {
       this.onCreateAgent?.();
       return;
@@ -121,7 +121,6 @@ export class AgentSelect extends OpenClawLightDomElement {
     }
     if (value === this.value) {
       event.preventDefault();
-      item.checked = true;
       const dropdown = event.currentTarget as HTMLElement & { open: boolean };
       dropdown.querySelector<HTMLElement>('[slot="trigger"]')?.focus({ preventScroll: true });
       dropdown.open = false;

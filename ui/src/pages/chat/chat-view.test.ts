@@ -912,9 +912,18 @@ describe("chat run error", () => {
     const summary = requireElement(alert, ".chat-error__content", "chat run error summary");
     expect(alert.getAttribute("role")).toBe("alert");
     expect(summary.textContent?.trim()).toBe("Error: gateway disconnected");
-    expect(alert.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')).not.toBeNull();
+    expect(alert.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')).toBeNull();
     expect(alert.closest(".chat-main__conversation-column")).not.toBeNull();
     expect(alert.closest(".agent-chat__composer-shell")).toBeNull();
+  });
+
+  it("keeps dismiss on the error state owned by its callback", () => {
+    const onDismissError = vi.fn();
+    const container = renderChatView({ error: "Request failed", onDismissError });
+
+    container.querySelector<HTMLButtonElement>('[aria-label="Dismiss error"]')?.click();
+
+    expect(onDismissError).toHaveBeenCalledOnce();
   });
 });
 
@@ -1052,6 +1061,28 @@ describe("cloud workspace conflict notice", () => {
       "git show 'refs/openclaw/worker-results/claim-mixed:src/safe.ts'",
       "git checkout 'refs/openclaw/worker-results/claim-mixed' -- ':(top,literal)src/safe.ts'",
     ]);
+  });
+
+  it("copies the recovery command for the selected conflicted path", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const normalizedConflict = workspaceResultConflictFromTranscript({
+      role: "custom",
+      customType: "cloud-workspace-conflict",
+      details: {
+        paths: ["src/first.ts", "src/second.ts"],
+        stagedResultRef: "refs/openclaw/worker-results/claim-per-row",
+      },
+    });
+    const container = renderChatView({ workspaceConflict: normalizedConflict });
+    const rows = container.querySelectorAll(".chat-workspace-conflict-paths li");
+
+    rows[1]?.querySelectorAll<HTMLButtonElement>("button")[1]?.click();
+    await Promise.resolve();
+
+    expect(writeText).toHaveBeenCalledWith(
+      "git checkout 'refs/openclaw/worker-results/claim-per-row' -- ':(top,literal)src/second.ts'",
+    );
   });
 });
 
