@@ -3629,6 +3629,30 @@ describe("chat slash menu accessibility", () => {
     textarea.setSelectionRange(4, 4);
     keydownComposer(container, "ArrowRight");
     expect(textarea.selectionStart).toBe("Use $prose_writer".length);
+
+    const tokenStart = 4;
+    const tokenEnd = "Use $prose_writer".length;
+    textarea.setSelectionRange(tokenEnd, tokenEnd);
+    const selectBackward = keydownComposer(container, "ArrowLeft", { shiftKey: true });
+    expect(selectBackward.defaultPrevented).toBe(true);
+    expect([textarea.selectionStart, textarea.selectionEnd, textarea.selectionDirection]).toEqual([
+      tokenStart,
+      tokenEnd,
+      "backward",
+    ]);
+
+    const contractForward = keydownComposer(container, "ArrowRight", { shiftKey: true });
+    expect(contractForward.defaultPrevented).toBe(true);
+    expect([textarea.selectionStart, textarea.selectionEnd]).toEqual([tokenEnd, tokenEnd]);
+
+    textarea.setSelectionRange(tokenStart, tokenStart);
+    const selectForward = keydownComposer(container, "ArrowRight", { shiftKey: true });
+    expect(selectForward.defaultPrevented).toBe(true);
+    expect([textarea.selectionStart, textarea.selectionEnd, textarea.selectionDirection]).toEqual([
+      tokenStart,
+      tokenEnd,
+      "forward",
+    ]);
   });
 
   it.each([

@@ -8,7 +8,11 @@ import {
   getSlashCommandDescription,
   type SlashCommandDef,
 } from "../../../lib/chat/commands.ts";
-import { paneDomId, scrollActiveMenuOptionIntoView } from "./chat-composer-dom.ts";
+import {
+  paneDomId,
+  scrollActiveMenuOptionIntoView,
+  syncComposerDraftOverlay,
+} from "./chat-composer-dom.ts";
 import { syncComposerMenuScroll } from "./chat-composer-slash-menu.ts";
 
 const SKILL_MENTION_CHAR = /[-a-zA-Z0-9_:]/u;
@@ -232,42 +236,6 @@ function parseSkillDraftTokens(value: string): SkillDraftToken[] {
   return tokens;
 }
 
-function syncSkillDraftOverlayTokens(element: Element | undefined, value: string): void {
-  if (!(element instanceof HTMLElement) || typeof requestAnimationFrame !== "function") {
-    return;
-  }
-  requestAnimationFrame(() => {
-    if (!element.isConnected) {
-      return;
-    }
-    const text = Array.from(element.childNodes).find(
-      (node): node is Text => node instanceof Text && node.data === value,
-    );
-    if (!text) {
-      return;
-    }
-    const overlayRect = element.getBoundingClientRect();
-    for (const token of element.querySelectorAll<HTMLElement>(".agent-chat__skill-token")) {
-      const start = Number(token.dataset.start);
-      const end = Number(token.dataset.end);
-      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start) {
-        continue;
-      }
-      const range = document.createRange();
-      range.setStart(text, start);
-      range.setEnd(text, end);
-      if (typeof range.getBoundingClientRect !== "function") {
-        continue;
-      }
-      const rect = range.getBoundingClientRect();
-      token.style.left = `${rect.left - overlayRect.left + element.scrollLeft}px`;
-      token.style.top = `${rect.top - overlayRect.top + element.scrollTop}px`;
-      token.style.width = `${rect.width}px`;
-      token.style.height = `${rect.height}px`;
-    }
-  });
-}
-
 function skillDraftRanges(value: string): SkillDraftRange[] {
   const ranges: SkillDraftRange[] = [];
   for (const match of value.matchAll(/\$([-a-zA-Z0-9_:]+)/gu)) {
@@ -319,13 +287,42 @@ export function handleSkillTokenKeydown(event: KeyboardEvent): boolean {
     !["ArrowLeft", "ArrowRight", "Backspace", "Delete"].includes(event.key) ||
     event.altKey ||
     event.ctrlKey ||
-    event.metaKey ||
-    event.shiftKey
+    event.metaKey
   ) {
     return false;
   }
   const target = event.target;
-  if (!(target instanceof HTMLTextAreaElement) || target.selectionStart !== target.selectionEnd) {
+  if (!(target instanceof HTMLTextAreaElement)) {
+    return false;
+  }
+  if (event.shiftKey) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+      return false;
+    }
+    const direction = target.selectionDirection;
+    const caret = direction === "backward" ? target.selectionStart : target.selectionEnd;
+    const anchor = direction === "backward" ? target.selectionEnd : target.selectionStart;
+    for (const range of skillDraftRanges(target.value)) {
+      const nextCaret =
+        event.key === "ArrowLeft" && caret > range.start && caret <= range.end
+          ? range.start
+          : event.key === "ArrowRight" && caret >= range.start && caret < range.end
+            ? range.end
+            : null;
+      if (nextCaret === null) {
+        continue;
+      }
+      event.preventDefault();
+      target.setSelectionRange(
+        Math.min(anchor, nextCaret),
+        Math.max(anchor, nextCaret),
+        nextCaret < anchor ? "backward" : "forward",
+      );
+      return true;
+    }
+    return false;
+  }
+  if (target.selectionStart !== target.selectionEnd) {
     return false;
   }
   const caret = target.selectionStart;
@@ -374,7 +371,7 @@ export function renderSkillDraftOverlay(
     class="agent-chat__composer-draft-overlay"
     aria-hidden="true"
     dir=${direction}
-    ${ref((element) => syncSkillDraftOverlayTokens(element, value))}
+    ${ref((element) => syncComposerDraftOverlay(element, value))}
   >${value}${tokens.map(
       (token) => html`<span
         class="agent-chat__skill-token"

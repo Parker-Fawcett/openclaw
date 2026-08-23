@@ -122,6 +122,46 @@ export function replaceComposerPopoverAnchor(
   return next;
 }
 
+function measureComposerDraftOverlay(element: HTMLElement, expectedValue?: string): void {
+  const text = Array.from(element.childNodes).find(
+    (node): node is Text =>
+      node instanceof Text && (expectedValue === undefined || node.data === expectedValue),
+  );
+  if (!text) {
+    return;
+  }
+  const overlayRect = element.getBoundingClientRect();
+  for (const token of element.querySelectorAll<HTMLElement>(".agent-chat__skill-token")) {
+    const start = Number(token.dataset.start);
+    const end = Number(token.dataset.end);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start) {
+      continue;
+    }
+    const range = document.createRange();
+    range.setStart(text, start);
+    range.setEnd(text, end);
+    if (typeof range.getBoundingClientRect !== "function") {
+      continue;
+    }
+    const rect = range.getBoundingClientRect();
+    token.style.left = `${rect.left - overlayRect.left + element.scrollLeft}px`;
+    token.style.top = `${rect.top - overlayRect.top + element.scrollTop}px`;
+    token.style.width = `${rect.width}px`;
+    token.style.height = `${rect.height}px`;
+  }
+}
+
+export function syncComposerDraftOverlay(element: Element | undefined, value: string): void {
+  if (!(element instanceof HTMLElement) || typeof requestAnimationFrame !== "function") {
+    return;
+  }
+  requestAnimationFrame(() => {
+    if (element.isConnected) {
+      measureComposerDraftOverlay(element, value);
+    }
+  });
+}
+
 function syncTextareaOverlay(el: HTMLTextAreaElement): HTMLElement | null {
   const overlay = el.parentElement?.querySelector<HTMLElement>(
     ".agent-chat__composer-draft-overlay",
@@ -131,6 +171,7 @@ function syncTextareaOverlay(el: HTMLTextAreaElement): HTMLElement | null {
   }
   overlay.scrollTop = el.scrollTop;
   overlay.scrollLeft = el.scrollLeft;
+  measureComposerDraftOverlay(overlay);
   return overlay;
 }
 

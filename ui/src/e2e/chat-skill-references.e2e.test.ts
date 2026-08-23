@@ -197,6 +197,62 @@ suite.define(() => {
         ]);
         expect(overlayGeometry).toEqual(textareaGeometry);
 
+        const tokenAlignment = () =>
+          overlay.evaluate((element) => {
+            const measuredToken = element.querySelector<HTMLElement>(".agent-chat__skill-token");
+            const text = Array.from(element.childNodes).find(
+              (node): node is Text => node instanceof Text,
+            );
+            if (!measuredToken || !text) {
+              return null;
+            }
+            const range = document.createRange();
+            range.setStart(text, Number(measuredToken.dataset.start));
+            range.setEnd(text, Number(measuredToken.dataset.end));
+            const rangeRect = range.getBoundingClientRect();
+            const tokenRect = measuredToken.getBoundingClientRect();
+            return {
+              left: Math.abs(tokenRect.left - rangeRect.left),
+              top: Math.abs(tokenRect.top - rangeRect.top),
+              width: Math.abs(tokenRect.width - rangeRect.width),
+            };
+          });
+        await composer.evaluate((element) => {
+          const surface = element.closest<HTMLElement>(".agent-chat__input");
+          if (!surface) {
+            throw new Error("Expected the composer surface");
+          }
+          surface.dataset.composerLayout = "single-line";
+        });
+        await expect
+          .poll(async () =>
+            Promise.all([
+              composer.evaluate((element) => getComputedStyle(element).whiteSpace),
+              overlay.evaluate((element) => getComputedStyle(element).whiteSpace),
+            ]),
+          )
+          .toEqual(["nowrap", "nowrap"]);
+
+        await composer.evaluate((element) => {
+          const surface = element.closest<HTMLElement>(".agent-chat__input");
+          if (surface) {
+            surface.dataset.composerLayout = "multiline";
+          }
+        });
+        await expect
+          .poll(() => overlay.evaluate((element) => getComputedStyle(element).whiteSpace))
+          .toBe("pre-wrap");
+
+        await composer.evaluate((element) => {
+          const combobox = element.parentElement;
+          if (!combobox) {
+            throw new Error("Expected the composer combobox");
+          }
+          combobox.style.flex = "0 0 180px";
+          combobox.style.width = "180px";
+        });
+        await expect.poll(tokenAlignment).toEqual({ left: 0, top: 0, width: 0 });
+
         const rtlDraft = "שלום עם $wrap: וטקסט נוסף שצריך להישאר מיושר עם שדה הכתיבה.";
         const rtlTokenStart = rtlDraft.indexOf("$wrap");
         const rtlTokenEnd = rtlTokenStart + "$wrap".length;
