@@ -1,0 +1,99 @@
+name: Mantis cutover bootstrap
+
+on:
+  push:
+    branches:
+      - codex/mantis-telegram-visible-v2
+
+permissions:
+  contents: write
+
+env:
+  EXPECTED_PAYLOAD_SHA256: 312e73c2f7eba601fec91a2354e8fea68f3b82f2daa6996b6ce61704a31a1c06
+  TARGET_BRANCH: codex/mantis-telegram-visible-v2
+
+jobs:
+  replace-branch:
+    if: github.actor == 'obviyus'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout bootstrap commit
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node 24
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+
+      - name: Replace scaffold with complete cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat .github/mantis-cutover-payload.part-* > /tmp/mantis-cutover.tar.xz
+          printf '%s  %s\n' "$EXPECTED_PAYLOAD_SHA256" /tmp/mantis-cutover.tar.xz \
+            | sha256sum --check --strict
+
+          git fetch --no-tags origin main
+          git reset --hard origin/main
+          tar -xJf /tmp/mantis-cutover.tar.xz
+
+          rm -f \
+            .github/codex/prompts/mantis-telegram-desktop-proof.md \
+            .github/codex/prompts/mantis-telegram-desktop-proof-resume.md \
+            .github/codex/prompts/mantis-recipes/README.md \
+            .github/codex/prompts/mantis-recipes/busy-queue-scripted-provider.md \
+            .github/codex/prompts/mantis-recipes/callback-data-payload-proof.md \
+            .github/codex/prompts/mantis-recipes/long-held-active-turn.md \
+            .github/codex/prompts/mantis-recipes/send-failure-injection.md \
+            .github/codex/prompts/mantis-recipes/staged-media-provider-proof.md \
+            scripts/mantis/build-telegram-desktop-proof-evidence.mts \
+            test/scripts/mantis-build-telegram-desktop-proof-evidence.test.ts
+
+          test ! -e .github/codex/prompts/mantis-telegram-desktop-proof.md
+          test ! -e .github/codex/prompts/mantis-telegram-desktop-proof-resume.md
+          test ! -e .github/codex/prompts/mantis-recipes
+          test ! -e scripts/mantis/build-telegram-desktop-proof-evidence.mts
+          test ! -e test/scripts/mantis-build-telegram-desktop-proof-evidence.test.ts
+          test ! -e .tmp-probe
+
+          node --check scripts/mantis/telegram-visible-proof.mjs
+          bash -n scripts/mantis/telegram-proof-scenario.sh
+          node --experimental-strip-types --check \
+            test/scripts/mantis-telegram-visible-proof.test.ts
+          node --experimental-strip-types --check \
+            test/scripts/mantis-telegram-desktop-proof-workflow.test.ts
+
+          corepack enable
+          pnpm install --frozen-lockfile
+          node --import tsx scripts/run-vitest.mts \
+            test/scripts/mantis-telegram-visible-proof.test.ts \
+            test/scripts/mantis-telegram-desktop-proof-workflow.test.ts \
+            test/scripts/mantis-publish-pr-evidence.test.ts
+          pnpm check:workflows
+
+          git add -A
+          git diff --cached --check
+          git diff --cached --stat
+          git diff --cached --numstat | tee /tmp/mantis-cutover-numstat.txt
+
+          read -r additions deletions < <(
+            awk '{ add += $1; del += $2 } END { print add + 0, del + 0 }' \
+              /tmp/mantis-cutover-numstat.txt
+          )
+          changed_files="$(wc -l < /tmp/mantis-cutover-numstat.txt)"
+          net_deleted=$((deletions - additions))
+          echo "Mantis cutover: ${changed_files} files, +${additions}/-${deletions}, net -${net_deleted} lines"
+          test "$changed_files" -ge 12
+          test "$net_deleted" -ge 750
+
+          git config user.name 'Ayaan Zaidi'
+          git config user.email 'hi@obviy.us'
+          git commit -m 'refactor(mantis): replace Telegram proof compiler with visible replay'
+          git push \
+            --force-with-lease="refs/heads/${TARGET_BRANCH}:${GITHUB_SHA}" \
+            origin "HEAD:refs/heads/${TARGET_BRANCH}"
