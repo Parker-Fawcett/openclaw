@@ -1,6 +1,7 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { ref } from "lit/directives/ref.js";
+import type { GatewayBrowserClient } from "../../api/gateway.ts";
 import { icons } from "../../components/icons.ts";
 import type { ImageLightboxItem } from "../../components/image-lightbox.ts";
 import { t } from "../../i18n/index.ts";
@@ -149,6 +150,8 @@ export class NewSessionComposerTextareaController {
   private placeholderTarget = "";
   private placeholderEntered = false;
   private capturedSelection: { start: number; end: number } | null = null;
+  private skillCommandClient: GatewayBrowserClient | null = null;
+  private skillCommandAgentId = "";
   readonly skillMenuState = createSkillMenuState();
 
   readonly ref = (element?: Element) => {
@@ -276,8 +279,26 @@ export class NewSessionComposerTextareaController {
 
   readonly getTextarea = () => this.textarea;
 
+  syncSkillCommandOwner(client: GatewayBrowserClient | null, agentId: string) {
+    const normalizedAgentId = agentId.trim();
+    if (this.skillCommandClient === client && this.skillCommandAgentId === normalizedAgentId) {
+      return;
+    }
+    // The controller survives agent and Gateway changes. Invalidate its async
+    // menu generation so a prior owner cannot publish completions into the next draft.
+    this.skillCommandClient = client;
+    this.skillCommandAgentId = normalizedAgentId;
+    resetSkillMenuState(this.skillMenuState);
+  }
+
+  ownsSkillCommands(client: GatewayBrowserClient, agentId: string): boolean {
+    return this.skillCommandClient === client && this.skillCommandAgentId === agentId.trim();
+  }
+
   disconnect() {
     this.resetPlaceholder();
+    this.skillCommandClient = null;
+    this.skillCommandAgentId = "";
     resetSkillMenuState(this.skillMenuState);
     if (this.textarea) {
       disconnectTextareaOverflowObserver(this.textarea);
@@ -533,7 +554,8 @@ export function renderNewSessionDraftComposer(options: {
   onSubmit: () => void;
 }) {
   const readSignal = options.attachmentDraft.readSignal;
-  const commandClient = options.context?.gateway.snapshot.client;
+  const commandClient = options.context?.gateway.snapshot.client ?? null;
+  options.textareaController.syncSkillCommandOwner(commandClient, options.agentId);
   return renderNewSessionComposer({
     attachmentLimits: options.context?.gateway.snapshot.hello?.policy?.attachments,
     attachments: options.attachmentDraft.attachments,
@@ -556,7 +578,13 @@ export function renderNewSessionDraftComposer(options: {
     requiresModifier: options.requiresModifier,
     requestUpdate: options.requestUpdate,
     refreshCommands: commandClient
-      ? () => refreshSlashCommands({ client: commandClient, agentId: options.agentId })
+      ? () =>
+          refreshSlashCommands({
+            client: commandClient,
+            agentId: options.agentId,
+            shouldApply: () =>
+              options.textareaController.ownsSkillCommands(commandClient, options.agentId),
+          })
       : undefined,
     submitDisabledReason: options.submitDisabledReason,
     blockedSubmitNotice: options.blockedSubmitNotice,

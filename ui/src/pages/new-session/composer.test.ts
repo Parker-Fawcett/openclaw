@@ -2,7 +2,15 @@
 
 import { render } from "lit";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildFallbackSlashCommands, replaceSlashCommands } from "../../lib/chat/commands.ts";
+import type { CommandsListResult } from "../../../../packages/gateway-protocol/src/index.js";
+import { createDeferred } from "../../../../test/helpers/promise.ts";
+import type { GatewayBrowserClient } from "../../api/gateway.ts";
+import type { ApplicationContext } from "../../app/context.ts";
+import {
+  buildFallbackSlashCommands,
+  getSkillCommandCompletions,
+  replaceSlashCommands,
+} from "../../lib/chat/commands.ts";
 import { waitForFast } from "../../test-helpers/wait-for.ts";
 import { adjustTextareaHeight } from "../chat/components/chat-composer-dom.ts";
 import { NewSessionAttachmentDraft } from "./attachment-draft.ts";
@@ -30,6 +38,8 @@ function renderComposer(
     draftAvailable?: boolean;
     onVisibilityChange?: (visibility: NewSessionVisibility) => void;
     message?: string;
+    agentId?: string;
+    context?: ApplicationContext;
     onInput?: (message: string) => void;
     onSubmit?: () => void;
     textareaController?: NewSessionComposerTextareaController;
@@ -44,13 +54,14 @@ function renderComposer(
     textareaControllers.push(textareaController);
   }
   let message = overrides.message ?? "";
+  let agentId = overrides.agentId ?? "main";
   const renderCurrent = () =>
     render(
       renderNewSessionDraftComposer({
-        agentId: "main",
+        agentId,
         attachmentDraft,
         canSubmit: overrides.canSubmit ?? true,
-        context: undefined,
+        context: overrides.context,
         isCatalogTarget: true,
         message,
         visibility: overrides.visibility,
@@ -79,7 +90,16 @@ function renderComposer(
   if (!composer) {
     throw new Error("Expected new-session composer");
   }
-  return { attachmentDraft, composer, container, textareaController };
+  return {
+    attachmentDraft,
+    composer,
+    container,
+    textareaController,
+    rerenderForAgent(nextAgentId: string) {
+      agentId = nextAgentId;
+      renderCurrent();
+    },
+  };
 }
 
 function createDragEvent(type: string, files: File[] = [], types = ["Files"]): Event {
@@ -105,6 +125,52 @@ afterEach(() => {
 });
 
 describe("new-session composer keyboard submission", () => {
+  it("drops a pending skill completion when the selected agent changes", async () => {
+    const response = createDeferred<CommandsListResult>();
+    const request = vi.fn(() => response.promise);
+    const client = { request } as unknown as GatewayBrowserClient;
+    const context = {
+      gateway: { snapshot: { client } },
+    } as unknown as ApplicationContext;
+    const { composer, rerenderForAgent, textareaController } = renderComposer({
+      agentId: "writer",
+      context,
+      message: "$",
+    });
+    const textarea = composer.querySelector<HTMLTextAreaElement>("textarea");
+    if (!textarea) {
+      throw new Error("Expected composer textarea");
+    }
+
+    textarea.setSelectionRange(1, 1);
+    textarea.dispatchEvent(new Event("select", { bubbles: true }));
+    expect(request).toHaveBeenCalledWith("commands.list", {
+      agentId: "writer",
+      includeArgs: true,
+      scope: "text",
+    });
+
+    rerenderForAgent("reviewer");
+    response.resolve({
+      commands: [
+        {
+          acceptsArgs: true,
+          description: "Only available to the previous agent.",
+          name: "writer_only",
+          scope: "both",
+          source: "skill",
+          skillModelVisible: true,
+          textAliases: ["/writer_only"],
+        },
+      ],
+    });
+    await waitForFast(() => {
+      expect(textareaController.skillMenuState.skillCommandRefreshPending).toBe(false);
+    });
+    expect(composer.querySelector(".skill-menu")?.textContent ?? "").not.toContain("writer_only");
+    expect(getSkillCommandCompletions("writer_only")).toEqual([]);
+  });
+
   it("opens skill mentions and inserts the selected skill with Enter", () => {
     replaceSlashCommands([
       {
