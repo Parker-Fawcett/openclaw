@@ -430,7 +430,9 @@ export function renderChatModelPicker(params: ChatModelPickerParams) {
         @click=${(event: MouseEvent) => {
           if (params.disabled) {
             event.preventDefault();
+            return;
           }
+          (event.currentTarget as HTMLElement).focus({ preventScroll: true });
         }}
       >
         ${modelToolsUnavailable
