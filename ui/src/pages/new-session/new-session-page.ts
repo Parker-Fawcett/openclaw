@@ -558,6 +558,9 @@ class NewSessionPage extends OpenClawLightDomElement {
             ? undefined
             : renderChatPermissionPicker({
                 canSelectFull: this.place.isAdmin(),
+                disabled:
+                  this.submission.submitting || Boolean(this.submission.pendingCloud.sessionKey),
+                disabledReason: this.submission.submitting ? t("newSession.starting") : undefined,
                 mode: this.submission.permissionMode,
                 sessionRoot: this.place.workspacePath(),
                 onSelect: (permissionMode) =>
