@@ -227,7 +227,7 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
         ${renderSessionProgressCard(props.progressCard, "composer")}
       </div>`
     : nothing;
-  const goal = activeSession?.goal
+  const goalCard = activeSession?.goal
     ? html`<div class="agent-chat__goal-float">
         ${renderChatGoal(state, activeSession.goal, {
           canAct: props.connected && canCompose,
@@ -292,7 +292,7 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
             </div>
           `
         : nothing}
-      ${disabledBanner} ${progressCard} ${goal} ${composerAlerts}
+      ${disabledBanner} ${progressCard} ${goalCard} ${composerAlerts}
       ${showComposerInput
         ? html`<div
               class="agent-chat__input agent-chat__input--chat ${props.offline

@@ -95,7 +95,8 @@ function renderComposer(
     composer,
     container,
     textareaController,
-    rerenderForAgent(nextAgentId: string) {
+    rerender: renderCurrent,
+    rerenderForAgent: (nextAgentId: string) => {
       agentId = nextAgentId;
       renderCurrent();
     },
@@ -169,6 +170,61 @@ describe("new-session composer keyboard submission", () => {
     });
     expect(composer.querySelector(".skill-menu")?.textContent ?? "").not.toContain("writer_only");
     expect(getSkillCommandCompletions("writer_only")).toEqual([]);
+  });
+
+  it("drops a pending skill completion when the Gateway client changes", async () => {
+    const response = createDeferred<CommandsListResult>();
+    const firstRequest = vi.fn(() => response.promise);
+    const firstClient = {
+      request: firstRequest,
+    } as unknown as GatewayBrowserClient;
+    const secondClient = {
+      request: vi.fn(),
+    } as unknown as GatewayBrowserClient;
+    const snapshot = { client: firstClient };
+    const context = {
+      gateway: { snapshot },
+    } as unknown as ApplicationContext;
+    const { composer, rerender, textareaController } = renderComposer({
+      agentId: "writer",
+      context,
+      message: "$",
+    });
+    const textarea = composer.querySelector<HTMLTextAreaElement>("textarea");
+    if (!textarea) {
+      throw new Error("Expected composer textarea");
+    }
+
+    textarea.setSelectionRange(1, 1);
+    textarea.dispatchEvent(new Event("select", { bubbles: true }));
+    expect(firstRequest).toHaveBeenCalledWith("commands.list", {
+      agentId: "writer",
+      includeArgs: true,
+      scope: "text",
+    });
+
+    snapshot.client = secondClient;
+    rerender();
+    response.resolve({
+      commands: [
+        {
+          acceptsArgs: true,
+          description: "Only available through the previous Gateway client.",
+          name: "previous_client_only",
+          scope: "both",
+          source: "skill",
+          skillModelVisible: true,
+          textAliases: ["/previous_client_only"],
+        },
+      ],
+    });
+    await waitForFast(() => {
+      expect(textareaController.skillMenuState.skillCommandRefreshPending).toBe(false);
+    });
+    expect(composer.querySelector(".skill-menu")?.textContent ?? "").not.toContain(
+      "previous_client_only",
+    );
+    expect(getSkillCommandCompletions("previous_client_only")).toEqual([]);
   });
 
   it("opens skill mentions and inserts the selected skill with Enter", () => {
