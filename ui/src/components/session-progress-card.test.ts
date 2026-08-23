@@ -65,6 +65,10 @@ describe("renderSessionProgressCard", () => {
     );
     expect(card?.open).toBe(true);
     expect(card?.dataset.complete).toBe("false");
+    expect(card?.querySelector("summary")?.getAttribute("aria-label")).toBe("1 of 3 completed");
+    expect(card?.querySelector("[role=region]")?.getAttribute("aria-label")).toBe(
+      "1 of 3 completed",
+    );
     expect(card?.querySelector("summary")?.textContent).toContain("Task progress");
     expect(card?.querySelector("progress")).toBeNull();
     expect(card?.querySelectorAll(".session-progress-card__step")).toHaveLength(3);

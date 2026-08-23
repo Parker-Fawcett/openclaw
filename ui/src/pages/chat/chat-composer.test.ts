@@ -180,10 +180,12 @@ describe("renderChatComposer controls", () => {
     expect(container.querySelector(".agent-chat__typing-indicator--outside")).toBeNull();
     banner?.querySelector<HTMLButtonElement>("button")?.click();
     expect(onAction).toHaveBeenCalledOnce();
-    expect(
-      container.querySelector(`[aria-label="${t("chat.runControls.stopGenerating")}"]`),
-    ).toBeNull();
-    expect(onAbort).not.toHaveBeenCalled();
+    const stop = container.querySelector<HTMLButtonElement>(
+      `[aria-label="${t("chat.runControls.stopGenerating")}"]`,
+    );
+    expect(stop).not.toBeNull();
+    stop?.click();
+    expect(onAbort).toHaveBeenCalledOnce();
   });
 
   it("keeps the disabled composer mounted for a catalog read-only state", () => {

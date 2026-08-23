@@ -1,5 +1,5 @@
 import { html, nothing } from "lit";
-import { renderCopyButton } from "../../../components/copy-button.ts";
+import { handleCopyButton, renderCopyButton } from "../../../components/copy-button.ts";
 import { icons } from "../../../components/icons.ts";
 import { t } from "../../../i18n/index.ts";
 import {
@@ -9,6 +9,17 @@ import {
   workspaceConflictPathForDisplay,
   type WorkspaceResultConflict,
 } from "../workspace-conflict.ts";
+
+function renderConflictCopyAction(text: string, label: string) {
+  return html`<button
+    class="btn btn--sm chat-copy-btn"
+    type="button"
+    aria-label=${label}
+    @click=${(event: Event) => void handleCopyButton(event, text, label)}
+  >
+    <span data-copy-label>${label}</span>
+  </button>`;
+}
 
 export function renderWorkspaceConflictNotice(props: {
   conflict?: WorkspaceResultConflict;
@@ -64,20 +75,14 @@ export function renderWorkspaceConflictNotice(props: {
               <code>${workspaceConflictPathForDisplay(entryPath)}</code>
               ${entryCommands
                 ? html`<span class="chat-workspace-conflict-path-actions">
-                    <button
-                      class="btn btn--sm"
-                      type="button"
-                      @click=${() => navigator.clipboard.writeText(entryCommands.inspect)}
-                    >
-                      ${t("chat.workspaceConflict.inspectCloud")}
-                    </button>
-                    <button
-                      class="btn btn--sm"
-                      type="button"
-                      @click=${() => navigator.clipboard.writeText(entryCommands.takeCloud)}
-                    >
-                      ${t("chat.workspaceConflict.takeCloud")}
-                    </button>
+                    ${renderConflictCopyAction(
+                      entryCommands.inspect,
+                      t("chat.workspaceConflict.inspectCloud"),
+                    )}
+                    ${renderConflictCopyAction(
+                      entryCommands.takeCloud,
+                      t("chat.workspaceConflict.takeCloud"),
+                    )}
                   </span>`
                 : nothing}
             </li>`;

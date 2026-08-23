@@ -150,6 +150,9 @@ export function renderChatComposerView(context: ChatComposerViewContext) {
                     .busyLabel ?? props.disabledBanner.actionLabel}`
               : props.disabledBanner.actionLabel}
           </button>
+          ${props.disabledBanner.kind === "composer-replacement" && showAbortableUi
+            ? renderChatPrimaryActions(runControlsProps)
+            : nothing}
         </div>
       `
     : nothing;

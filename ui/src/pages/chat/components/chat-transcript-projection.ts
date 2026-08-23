@@ -57,7 +57,7 @@ import type {
   TranscriptRow,
 } from "./chat-transcript-controller.ts";
 import { resolveAssistantDisplayAvatar } from "./chat-welcome.ts";
-import { renderTurnRecapRow } from "./chat-working-indicator.ts";
+import { renderTurnRecapRow, renderTurnTerminalStatusRow } from "./chat-working-indicator.ts";
 
 type ChatTranscriptProjection = {
   isDirectThread: boolean;
@@ -315,7 +315,6 @@ export function projectChatTranscript(
     { parts: StreamGroupPart[]; options: StreamGroupOptions }
   >();
   const turnRecapByGroupKey = new Map<string, TurnRecap>();
-  const terminalStatusByGroupKey = new Map<string, "interrupted">();
   const loadedReplySources = new Map<string, LoadedReplySource>();
   const resolvedReplyPreviews = new Map<string, LoadedReplySource["preview"] | undefined>();
   const resolveReplyPreview = (replyToId: string) => {
@@ -412,7 +411,6 @@ export function projectChatTranscript(
       rewindDisabled: Boolean(props.runActive || props.runWorking),
       activeContinuation: activeContinuationByGroupKey.get(item.key),
       turnRecap: turnRecapByGroupKey.get(item.key),
-      terminalStatus: terminalStatusByGroupKey.get(item.key),
     } satisfies Parameters<typeof renderMessageGroup>[1];
   };
   const renderGroupItem = (item: MessageGroup) => {
@@ -437,8 +435,7 @@ export function projectChatTranscript(
       ? `${continuation.parts.map((part) => part.key).join(" ")}${workingUsageKey}`
       : "";
     const recapKey = recap ? `${recap.runtimeMs}:${recap.outputTokens ?? ""}` : "";
-    const terminalKey = terminalStatusByGroupKey.get(item.key) ?? "";
-    return `${continuationKey}|${recapKey}|${terminalKey}`;
+    return `${continuationKey}|${recapKey}`;
   };
   const renderItem = guardChatRenderItems(state, liveStatusSignature, (item) => {
     if (item.kind === "divider") {
@@ -572,20 +569,18 @@ export function projectChatTranscript(
       turnRecapOwnerKey = lastItem.key;
     }
   }
-  if (props.runStatus?.phase === "interrupted") {
-    const owner = transcriptItems.findLast(
-      (item): item is MessageGroup =>
-        item.kind === "group" && assistantGroupCanOwnActiveRunStatus(item),
-    );
-    if (owner) {
-      terminalStatusByGroupKey.set(owner.key, "interrupted");
-    }
-  }
   const transcriptRows: TranscriptRow<ChatRenderItem>[] = transcriptItems.map((item) => ({
     kind: "item",
     key: item.key,
     item,
   }));
+  if (props.runStatus?.phase === "interrupted") {
+    transcriptRows.push({
+      kind: "content",
+      key: `interrupted:${props.runStatus.occurredAt}`,
+      content: renderTurnTerminalStatusRow("interrupted"),
+    });
+  }
   const realtimeConversation = renderRealtimeTalkConversation(props);
   if (realtimeConversation !== nothing) {
     transcriptRows.push({

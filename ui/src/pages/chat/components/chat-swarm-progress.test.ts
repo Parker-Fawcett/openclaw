@@ -84,6 +84,9 @@ describe("chat Swarm progress", () => {
 
     expect(container.querySelectorAll(".chat-swarm__task")).toHaveLength(256);
     expect(container.querySelector(".chat-swarm__task-icon--running")).not.toBeNull();
+    expect(
+      container.querySelector(".chat-swarm__header")?.textContent?.replace(/\s+/g, " "),
+    ).toContain("300 of 301");
   });
 
   it("exposes a task list and disappears when no group is active", () => {

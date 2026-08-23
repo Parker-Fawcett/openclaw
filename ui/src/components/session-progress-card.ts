@@ -119,7 +119,7 @@ export function renderSessionProgressCard(
     const complete = steps.length > 0 && steps.every((step) => step.status === "completed");
     const composerCountLabel = counts
       ? t("sessionProgressCard.countLabel", {
-          completed: String(currentPosition),
+          completed: String(counts.completed),
           total: String(counts.total),
         })
       : t("sessionProgressCard.noteLabel");

@@ -139,7 +139,7 @@ function collectActiveSwarmGroups(
                 : bucket.dots;
             return {
               title,
-              dots: visibleFirst.slice(0, MAX_RENDERED_DOTS_PER_PHASE),
+              dots: visibleFirst,
             };
           }),
       } satisfies SwarmGroup;
@@ -172,11 +172,14 @@ export function renderChatSwarmProgress({
       aria-label=${t("labsPage.swarm.title")}
     >
       ${groups.map((group) => {
-        const tasks = group.phases.flatMap((phase) => phase.dots);
-        const complete = tasks.filter(
+        const allTasks = group.phases.flatMap((phase) => phase.dots);
+        const tasks = group.phases.flatMap((phase) =>
+          phase.dots.slice(0, MAX_RENDERED_DOTS_PER_PHASE),
+        );
+        const complete = allTasks.filter(
           (task) => task.status === "done" || task.status === "failed",
         ).length;
-        const hasFailure = tasks.some((task) => task.status === "failed");
+        const hasFailure = allTasks.some((task) => task.status === "failed");
         return html`
           <div
             class="chat-swarm__group ${hasFailure ? "chat-swarm__group--failed" : ""}"
@@ -185,17 +188,20 @@ export function renderChatSwarmProgress({
           >
             <div class="chat-swarm__header">
               <strong title=${group.groupId}>${group.label}</strong>
-              <span>${complete} of ${tasks.length}</span>
+              <span>${complete} of ${allTasks.length}</span>
             </div>
             <div class="chat-swarm__progress" aria-hidden="true">
               ${group.phases.map((phase) => {
-                const phaseComplete = phase.dots.filter(
-                  (task) => task.status === "done" || task.status === "failed",
-                ).length;
                 const phaseProgress =
                   phase.dots.length === 0
                     ? 0
-                    : Math.round((phaseComplete / phase.dots.length) * 100);
+                    : Math.round(
+                        (phase.dots.filter(
+                          (task) => task.status === "done" || task.status === "failed",
+                        ).length /
+                          phase.dots.length) *
+                          100,
+                      );
                 const phaseFailed = phase.dots.some((task) => task.status === "failed");
                 return html`<span class="chat-swarm__progress-segment">
                   <span
