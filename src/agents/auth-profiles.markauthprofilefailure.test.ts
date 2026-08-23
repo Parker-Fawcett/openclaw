@@ -148,7 +148,7 @@ describe("markAuthProfileFailure", () => {
     expect(
       reloadedCredential && "key" in reloadedCredential ? reloadedCredential.key : undefined,
     ).toBe("sk-fresh-new");
-    expect(typeof reloaded.usageStats?.["openai:default"]?.cooldownUntil).toBe("number");
+    expect(reloaded.usageStats?.["openai:default"]?.cooldownUntil).toBeUndefined();
   });
 
   it("disables billing failures for ~5 hours by default", async () => {

@@ -146,10 +146,9 @@ describe("writeOAuthCredentials", () => {
       access: "access-sync",
       type: "oauth",
     });
-    const persistedSiblingStore = await readAuthProfilesForAgent<{
-      profiles?: Record<string, OAuthCredentials & { type?: string }>;
-    }>(workerAgentDir);
-    expect(persistedSiblingStore.profiles).toEqual({});
+    await expect(readAuthProfilesForAgent(workerAgentDir)).rejects.toThrow(
+      "Expected SQLite auth profile store",
+    );
   });
 
   it("writes OAuth credentials only to target dir by default", async () => {
