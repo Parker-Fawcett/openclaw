@@ -18,6 +18,10 @@ const model = {
   maxTokens: 128,
 } satisfies Model<"openai-responses">;
 
+function responsesModel(overrides: Partial<Model>): Model {
+  return { ...model, ...overrides };
+}
+
 describe("Responses output capacity", () => {
   it.each([
     { requested: 256, capacity: 128, expected: 128 },
@@ -27,7 +31,7 @@ describe("Responses output capacity", () => {
   ])(
     "bounds $requested tokens by capacity $capacity in both request owners",
     ({ requested, capacity, expected }) => {
-      const selected = { ...model, maxTokens: capacity };
+      const selected = responsesModel({ maxTokens: capacity });
       expect(
         buildOpenAIResponsesParams(selected, context, { maxTokens: requested }).max_output_tokens,
       ).toBe(expected);
